@@ -169,7 +169,7 @@ TraceCwnd (uint32_t nodeId, std::string cwnd_tr_file_name)
   AsciiTraceHelper ascii;
   // cWndStreamはあらかじめ定義しておく(Ptr<OutputStreamWrapper>)
   cWndStream = ascii.CreateFileStream (cwnd_tr_file_name.c_str ());
-  // CongestionWindowの場所(configパス)
+  // CongestionWindowの場所(configパス) "/NodeList/[i]/$ns3::TcpL4Protocol/SocketList/[j]" iがノード番号, jがネットワークデバイス番号
   std::string nodelist = "/NodeList/" + std::to_string(nodeId) + "/$ns3::TcpL4Protocol/SocketList/0/CongestionWindow";
   Config::ConnectWithoutContext (nodelist, MakeCallback (&CwndTracer));
   //Config::ConnectWithoutContext ("/NodeList/1/$ns3::TcpL4Protocol/SocketList/0/CongestionWindow", MakeCallback (&CwndTracer));
