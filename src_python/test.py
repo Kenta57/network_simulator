@@ -15,7 +15,7 @@ plt.rcParams['font.size'] = 14
 ROOT = Path.cwd().parent
 
 # 計算結果を出力するディレクトリ名．
-save_path = ROOT / 'data' / 'test'
+save_path = ROOT / 'result' / 'test'
 # TCPアルゴリズム一覧．
 algorithms = [
     'TcpNewReno', 'TcpHybla', 'TcpHighSpeed', 'TcpHtcp',
