@@ -157,44 +157,44 @@ StartAppTrace(ApplicationContainer sinkapp, std::string th_file_name)
 	Simulator::Schedule (Seconds (TH_INTERVAL), &TraceThroughput, sinkapp.Get(0), st1, 0);
 }
 
-static void
-TraceQueue (Ptr< Queue< Packet > > queue, Ptr<OutputStreamWrapper> stream, std::string type)
-{
-  // queueにある*数
-	uint32_t sizeB = queue->GetNBytes ();
-	uint32_t sizeP = queue->GetNPackets ();
-  // 受信した*数
-	uint32_t  recB = queue->GetTotalReceivedBytes ();
-	uint32_t  recP = queue->GetTotalReceivedPackets ();
-  // dropした*数
-	uint32_t dropB = queue->GetTotalDroppedBytes ();
-	uint32_t dropP = queue->GetTotalDroppedPackets ();
+// static void
+// TraceQueue (Ptr< Queue< Packet > > queue, Ptr<OutputStreamWrapper> stream, std::string type)
+// {
+//   // queueにある*数
+// 	uint32_t sizeB = queue->GetNBytes ();
+// 	uint32_t sizeP = queue->GetNPackets ();
+//   // 受信した*数
+// 	uint32_t  recB = queue->GetTotalReceivedBytes ();
+// 	uint32_t  recP = queue->GetTotalReceivedPackets ();
+//   // dropした*数
+// 	uint32_t dropB = queue->GetTotalDroppedBytes ();
+// 	uint32_t dropP = queue->GetTotalDroppedPackets ();
 
-  // typeに応じて単位をbyteかpacketにしたものを書き込む
-	if(type.compare("bytes") == 0) {
-		*stream->GetStream() << Simulator::Now ().GetSeconds () << "\t" << sizeB << "\t" << recB << "\t" << dropB << std::endl;
-	} else {
-		*stream->GetStream() << Simulator::Now ().GetSeconds () << "\t" << sizeP << "\t" << recP << "\t" << dropP << std::endl;
-	}
-  // 再帰的に呼び出す
-	Simulator::Schedule (Seconds (TH_INTERVAL), &TraceQueue, queue, stream, type);
-}
+//   // typeに応じて単位をbyteかpacketにしたものを書き込む
+// 	if(type.compare("bytes") == 0) {
+// 		*stream->GetStream() << Simulator::Now ().GetSeconds () << "\t" << sizeB << "\t" << recB << "\t" << dropB << std::endl;
+// 	} else {
+// 		*stream->GetStream() << Simulator::Now ().GetSeconds () << "\t" << sizeP << "\t" << recP << "\t" << dropP << std::endl;
+// 	}
+//   // 再帰的に呼び出す
+// 	Simulator::Schedule (Seconds (TH_INTERVAL), &TraceQueue, queue, stream, type);
+// }
 
-static void
-StartQueueTrace (Ptr<NetDevice> dev, std::string type, std::string q_file_name)
-{
-  // cast
-	Ptr<PointToPointNetDevice> nd = StaticCast<PointToPointNetDevice> (dev);
-  // netdeviceのqueueを取り出す
-	Ptr< Queue< Packet > > queue = nd->GetQueue ();
+// static void
+// StartQueueTrace (Ptr<NetDevice> dev, std::string type, std::string q_file_name)
+// {
+//   // cast
+// 	Ptr<PointToPointNetDevice> nd = StaticCast<PointToPointNetDevice> (dev);
+//   // netdeviceのqueueを取り出す
+// 	Ptr< Queue< Packet > > queue = nd->GetQueue ();
 
-  // asciiデータのためのhelper関数
-	AsciiTraceHelper ascii;
-	Ptr<OutputStreamWrapper> st1 = ascii.CreateFileStream(q_file_name);
+//   // asciiデータのためのhelper関数
+// 	AsciiTraceHelper ascii;
+// 	Ptr<OutputStreamWrapper> st1 = ascii.CreateFileStream(q_file_name);
 
-	*st1->GetStream() << "Time\t" << "size\t" << "received\t" << "dropped" << "\n";
-	Simulator::Schedule (Seconds (TH_INTERVAL), &TraceQueue, queue, st1, type);
-}
+// 	*st1->GetStream() << "Time\t" << "size\t" << "received\t" << "dropped" << "\n";
+// 	Simulator::Schedule (Seconds (TH_INTERVAL), &TraceQueue, queue, st1, type);
+// }
 
 static PointToPointHelper
 GetP2PLink (std::string bandwidth, std::string delay, uint32_t q_size)
@@ -335,7 +335,7 @@ int main (int argc, char *argv[])
 
   for (int i = 0; i < num_flows; i++)
     {
-      int q = 0;
+      // int q = 0;
       // ネットデバイス(インターフェース)の設定
       NetDeviceContainer devices;
       // LocalLinkの設定のリンクをsourcesのi番目とgatewaysの0番目のノードに張る
@@ -350,13 +350,13 @@ int main (int argc, char *argv[])
         devices = GwLink.Install (gateways.Get (0), gateways.Get (1));
         address.NewNetwork ();
         interfaces = address.Assign (devices);
-        StartQueueTrace(devices.Get(0), "packets", prefix_file_name + "-queue-" + std::to_string(q++) + ".data");
+        // StartQueueTrace(devices.Get(0), "packets", prefix_file_name + "-queue-" + std::to_string(q++) + ".data");
       }
 
       devices = UnReLink.Install (gateways.Get (1), sinks.Get (i));
       address.NewNetwork ();
       interfaces = address.Assign (devices);
-      StartQueueTrace(devices.Get(0), "packets", prefix_file_name + "-queue-" + std::to_string(q++) + ".data");
+      // StartQueueTrace(devices.Get(0), "packets", prefix_file_name + "-queue-" + std::to_string(q++) + ".data");
 
       // .Get(i)はPtr<Ipv4>とそれを保存するindexのstd::pairを返す, ipが振られたnetwork deviceを集めたコンテナ
       sink_interfaces.Add (interfaces.Get (1));
@@ -399,7 +399,7 @@ int main (int argc, char *argv[])
 
       // TcpSocketFactoryはTCP socketインスタンスを作るためのapi, rx(reception)用のソケットのプロトコルの決定？
       sinkHelper.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkApp = sinkHelper.Install (sinks);
+      ApplicationContainer sinkApp = sinkHelper.Install (sinks.Get (i));
       // アプリケーションの開始, 終了時刻を決定
       sinkApp.Start (Seconds (start_time * i));
       sinkApp.Stop (Seconds (stop_time));
