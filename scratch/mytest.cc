@@ -552,7 +552,7 @@ int main (int argc, char *argv[])
 
       // TcpSocketFactoryはTCP socketインスタンスを作るためのapi, rx(reception)用のソケットのプロトコルの決定？
       sinkHelper.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkApp = sinkHelper.Install (sinks);
+      ApplicationContainer sinkApp = sinkHelper.Install (sinks.Get (i));
       // アプリケーションの開始, 終了時刻を決定
       sinkApp.Start (Seconds (start_time * i));
       sinkApp.Stop (Seconds (stop_time));
