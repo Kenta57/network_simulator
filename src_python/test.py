@@ -8,6 +8,7 @@ import pandas as pd
 import seaborn as sns
 from tqdm import tqdm
 from pathlib import Path
+from SimulationConfig import SimulationConfig
 
 sns.set_style(style='ticks')
 plt.rcParams['font.size'] = 14
@@ -15,7 +16,7 @@ plt.rcParams['font.size'] = 14
 ROOT = Path.cwd().parent
 
 # 計算結果を出力するディレクトリ名．
-save_path = ROOT / 'result' / 'test'
+save_path = ROOT / 'result'
 # TCPアルゴリズム一覧．
 algorithms = [
     'TcpNewReno', 'TcpHybla', 'TcpHighSpeed', 'TcpHtcp',
@@ -24,68 +25,6 @@ algorithms = [
 
 # 保存用ディレクトリを作成．
 save_path.mkdir(exist_ok=True)
-
-
-# コマンドライン引数を追加したコマンドを作成する関数
-def make_command(
-        algorithm=None, prefix_name=None, tracing=None,
-        duration=None, error_p=None, bandwidth=None, delay=None,
-        access_bandwidth=None, access_delay=None,
-        data=None, mtu=None, flow_monitor=None, pcap_tracing=None, q_size=None, num_flows=None):
-
-    """
-    - algorithm: 輻輳制御アルゴリズム名．
-    - prefix_name: 出力するファイルのプレフィックス名．pwdからの相対パスで表す．
-    - tracing: トレーシングを有効化するか否か．
-    - duration: シミュレーション時間[s]．
-    - error_p: パケットエラーレート．
-    - bandwidth: ボトルネック部分の帯域．例：'2Mbps'
-    - delay: ボトルネック部分の遅延．例：'0.01ms'
-    - access_bandwidth: アクセス部分の帯域．例:'10Mbps'
-    - access_delay: アクセス部分の遅延．例:'45ms'．
-    - data: 送信するデータ総量[MB]．
-    - mtu: IPパケットの大きさ[byte]．
-    - flow_monitor: Flow monitorを有効化するか否か．
-    - pcap_tracing: PCAP tracingを有効化するか否か．
-    - q_size : キューのサイズ(パケット)
-    - num_flows : フローの数
-    """
-
-    cmd = './waf --run "mytest'
-    if algorithm:
-        cmd += ' --transport_prot={}'.format(algorithm)
-    if prefix_name:
-        cmd += ' --prefix_name={}'.format(prefix_name)
-    if tracing:
-        cmd += ' --tracing={}'.format(tracing)
-    if duration:
-        cmd += ' --duration={}'.format(duration)
-    if error_p:
-        cmd += ' --error_p={}'.format(error_p)
-    if bandwidth:
-        cmd += ' --bandwidth={}'.format(bandwidth)
-    if delay:
-        cmd += ' --delay={}'.format(delay)
-    if access_bandwidth:
-        cmd += ' --access_bandwidth={}'.format(access_bandwidth)
-    if access_delay:
-        cmd += ' --access_delay={}'.format(access_delay)
-    if data:
-        cmd += ' --data={}'.format(data)
-    if mtu:
-        cmd += ' --mtu={}'.format(mtu)
-    if flow_monitor:
-        cmd += ' --flow_monitor={}'.format(flow_monitor)
-    if pcap_tracing:
-        cmd += ' --pcap_tracing={}'.format(pcap_tracing)
-    if q_size:
-        cmd += ' --q_size={}'.format(q_size)
-    if num_flows:
-        cmd += ' --num_flows={}'.format(num_flows)
-    cmd += '"'
-
-    return cmd
-
 
 # def read_data(prefix_name, metric, duration):
 def read_data(file_name, duration):
@@ -192,10 +131,25 @@ def plot_cong_state(
     else:
         plt.xticks([])
 
+# 複数の送信ノードのTCPの内部状態をプロットする関数．
+def plot_para(name, duration, num_flows, para):
+    save_path = ROOT / 'result' / name
+
+    paths = [save_path / f'{name}-flw{i}-{para}.data' for i in range(num_flows)]
+
+    plt.figure(figsize=(12, 12))
+    plt.title(name)
+    for index, path in enumerate(paths):
+        data = read_data(path, duration)
+        plt.subplot(4, 1, index+1)
+        plot_metric(data, duration, para)
+
+    # 保存
+    plt.savefig(str(save_path/f'{name}-{para}-flows.png'))
 
 # algorithmのcwnd，ssth，rtt，cong-stateをプロットする関数．
-def plot_algorithm(algo, duration, save_path, flow):
-
+def plot_algorithm(name, duration, flow):
+    save_path = ROOT / 'result' / name
     # para = [
     #     'ack', 'cong-state', 'cwnd', 'inflight', 'next-rx', 'next-tx',
     #     'rto', 'rtt', 'ssth', 'throughput'
@@ -203,10 +157,10 @@ def plot_algorithm(algo, duration, save_path, flow):
 
     paras = ['cwnd', 'ssth', 'inflight']
 
-    paths = [save_path / f'TcpNewReno-flw{flow}-{p}.data' for p in paras]
+    paths = [save_path / f'{name}-flw{flow}-{p}.data' for p in paras]
 
     plt.figure(figsize=(12, 12))
-    plt.title(algo)
+    plt.title(name)
     index = 1
     for para, path in zip(paras,paths):
         data = read_data(path, duration)
@@ -214,7 +168,7 @@ def plot_algorithm(algo, duration, save_path, flow):
         plot_metric(data, duration, para)
         index += 1
 
-    path = save_path / 'TcpNewReno-flw0-cong-state.data'
+    path = save_path / f'{name}-flw{flow}-cong-state.data'
     cong_state = read_data(path, duration)
 
     plt.subplot(4, 1, 4)
@@ -224,42 +178,28 @@ def plot_algorithm(algo, duration, save_path, flow):
         x_ticks=True)
 
     # 保存
-    plt.savefig(str(save_path)+f'_flow{flow}.png')
+    plt.savefig(str(save_path/f'{name}-flow{flow}.png'))
 
+def execute():
+    name = 'test'
+    save_path = ROOT / 'result' / name
+    save_path.mkdir(exist_ok=True)
+    save_path = save_path / name
 
-# ns-3コマンドを実行して，結果をプロットする関数．
-def execute_and_plot(
-        algo, duration, save_path=save_path, error_p=None, tracing=None,
-        bandwidth=None, delay=None, access_bandwidth=None,
-        access_delay=None, data=None, mtu=None,
-        flow_monitor=None, pcap_tracing=None,
-        q_size=None, num_flows=None):
+    sim_config = SimulationConfig()
+    setting = {}
+    setting['duration'] = 10
+    setting['prefix_name'] = str(save_path.relative_to(ROOT))
+    sim_config.update(setting)
 
-    # 保存用ディレクトリを作成．
-    path = save_path / algo
-    path.mkdir(exist_ok=True)
-
-    prefix_name = str(path.relative_to(ROOT))
-
-    cmd = make_command(
-        algorithm=algo, tracing=tracing,
-        duration=duration, prefix_name=prefix_name,
-        error_p=error_p, bandwidth=bandwidth, delay=delay,
-        access_bandwidth=access_bandwidth,
-        access_delay=access_delay,
-        data=data, mtu=mtu, flow_monitor=flow_monitor,
-        pcap_tracing=pcap_tracing, q_size=q_size, num_flows=num_flows)
-
-    subprocess.check_output(cmd, shell=True, cwd=str(ROOT)).decode()
-    # plot_algorithm(algo, duration, save_path)
+    sim_config.execute()
 
 
 def main():
-    execute_and_plot(algo='TcpNewReno', duration=10, tracing=True, num_flows=3, q_size=100)
+    execute()
+    plot_para(name='test', duration=10, num_flows=3, para='cwnd')
+    plot_algorithm(name='test', duration=10, flow=0)
 
 
 if __name__ == '__main__':
-    execute_and_plot(algo='TcpNewReno', duration=10, tracing=True, num_flows=3, q_size=100, pcap_tracing=True)
-    # algo = 'TcpNewReno'
-    # duration = 60
-    # plot_algorithm(algo, duration, save_path,0)
+    main()
