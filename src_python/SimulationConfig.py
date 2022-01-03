@@ -51,23 +51,15 @@ class SimulationConfig:
             self.make_command()
         subprocess.check_output(self.cmd, shell=True, cwd=str(ROOT)).decode()
 
+    def show(self):
+        print(self.parameters)
+        return self.parameters
+
 if __name__=='__main__':
     s = SimulationConfig()
     setting = {}
-    # setting['algorithm'] = 'TcpCubic'
-    # setting['num_flows'] = 6
-    # setting['pcap_tracing'] = True
     setting['duration'] = 10
     s.update(setting)
-
-    print(s.parameters)
-
-    cmd = s.make_command()
-
-    subprocess.check_output(cmd, shell=True, cwd=str(ROOT)).decode()
-
-    # print(s.make_command())
-    # print(s.algorithm)
-    # print(s.num_flows)
-    # print(s.pcap_tracing)
+    s.show()
+    s.execute()
 
