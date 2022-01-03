@@ -75,38 +75,26 @@ double TH_INTERVAL = 5.0;
 
 // トレース用コールバック関数の設定 関数の引数は決まっている
 static void
-CwndTracer (uint32_t oldval, uint32_t newval)
+CwndTracer (Ptr<OutputStreamWrapper> stream, uint32_t oldval, uint32_t newval)
 {
   // 観測初め　streamに情報を追加していく
   if (firstCwnd)
     {
-      *cWndStream->GetStream () << "0.0 " << oldval << std::endl;
+      *stream->GetStream () << "0.0 " << oldval << std::endl;
       firstCwnd = false;
     }
-  *cWndStream->GetStream () << Simulator::Now ().GetSeconds () << " " << newval << std::endl;
-  cWndValue = newval;
-
-  if (!firstSshThr)
-    {
-      *ssThreshStream->GetStream () << Simulator::Now ().GetSeconds () << " " << ssThreshValue << std::endl;
-    }
+  *stream->GetStream () << Simulator::Now ().GetSeconds () << " " << newval << std::endl;
 }
 
 static void
-SsThreshTracer (uint32_t oldval, uint32_t newval)
+SsThreshTracer (Ptr<OutputStreamWrapper> stream, uint32_t oldval, uint32_t newval)
 {
   if (firstSshThr)
     {
-      *ssThreshStream->GetStream () << "0.0 " << oldval << std::endl;
+      *stream->GetStream () << "0.0 " << oldval << std::endl;
       firstSshThr = false;
     }
-  *ssThreshStream->GetStream () << Simulator::Now ().GetSeconds () << " " << newval << std::endl;
-  ssThreshValue = newval;
-
-  if (!firstCwnd)
-    {
-      *cWndStream->GetStream () << Simulator::Now ().GetSeconds () << " " << cWndValue << std::endl;
-    }
+  *stream->GetStream () << Simulator::Now ().GetSeconds () << " " << newval << std::endl;
 }
 
 static void
@@ -168,20 +156,19 @@ TraceCwnd (uint32_t nodeId, std::string cwnd_tr_file_name)
   // asciiトレースファイルに書き込んでくれるhelper関数
   AsciiTraceHelper ascii;
   // cWndStreamはあらかじめ定義しておく(Ptr<OutputStreamWrapper>)
-  cWndStream = ascii.CreateFileStream (cwnd_tr_file_name.c_str ());
+  Ptr<OutputStreamWrapper> stream = ascii.CreateFileStream (cwnd_tr_file_name.c_str ());
   // CongestionWindowの場所(configパス) "/NodeList/[i]/$ns3::TcpL4Protocol/SocketList/[j]" iがノード番号, jがネットワークデバイス番号
   std::string nodelist = "/NodeList/" + std::to_string(nodeId) + "/$ns3::TcpL4Protocol/SocketList/0/CongestionWindow";
-  Config::ConnectWithoutContext (nodelist, MakeCallback (&CwndTracer));
-  //Config::ConnectWithoutContext ("/NodeList/1/$ns3::TcpL4Protocol/SocketList/0/CongestionWindow", MakeCallback (&CwndTracer));
+  Config::ConnectWithoutContext (nodelist, MakeBoundCallback (&CwndTracer, stream));
 }
 
 static void
 TraceSsThresh (uint32_t nodeId, std::string ssthresh_tr_file_name)
 {
   AsciiTraceHelper ascii;
-  ssThreshStream = ascii.CreateFileStream (ssthresh_tr_file_name.c_str ());
+  Ptr<OutputStreamWrapper> stream = ascii.CreateFileStream (ssthresh_tr_file_name.c_str ());
   std::string nodelist = "/NodeList/" + std::to_string(nodeId) + "/$ns3::TcpL4Protocol/SocketList/0/SlowStartThreshold";
-  Config::ConnectWithoutContext (nodelist, MakeCallback (&SsThreshTracer));
+  Config::ConnectWithoutContext (nodelist, MakeBoundCallback (&SsThreshTracer, stream));
 }
 
 static void
@@ -471,7 +458,7 @@ int main (int argc, char *argv[])
   error_model.SetRate (error_p);
 
   // 上でGetP2PLink関数を定義, 引数の通りのようなpointtopointhelperを返す関数(queueはdroptail)
-  PointToPointHelper LocalLink = GetP2PLink ("100Mbps", access_delay, q_size);
+  PointToPointHelper LocalLink = GetP2PLink ("10Mbps", access_delay, q_size);
   PointToPointHelper GwLink = GetP2PLink ("20Mbps", delay, q_size);
   PointToPointHelper UnReLink = GetP2PLink ("10Mbps", delay, q_size);
 
@@ -573,7 +560,7 @@ int main (int argc, char *argv[])
       stack.EnableAsciiIpv4All (ascii_wrap);
       */
 
-      for (int i = 0; i < 3; i++) {
+      for (int i = 0; i < num_flows; i++) {
         // 0.00001sごとに再帰的に関数が呼び出される 引数は時間, 関数, その関数の引数
         Simulator::Schedule (Seconds (0.00001+start_time * i), &TraceCwnd, sources.Get (i)->GetId(), prefix_file_name + "-flw" + std::to_string(i) + "-cwnd.data");
         Simulator::Schedule (Seconds (0.00001+start_time * i), &TraceSsThresh, sources.Get (i)->GetId(), prefix_file_name + "-flw" + std::to_string(i) + "-ssth.data");
