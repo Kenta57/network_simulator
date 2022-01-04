@@ -180,8 +180,7 @@ def plot_algorithm(name, duration, flow):
     # 保存
     plt.savefig(str(save_path/f'{name}-flow{flow}.png'))
 
-def execute():
-    name = 'test'
+def execute(name):
     save_path = ROOT / 'result' / name
     save_path.mkdir(exist_ok=True)
     save_path = save_path / name
@@ -190,15 +189,18 @@ def execute():
     setting = {}
     setting['duration'] = 10
     setting['prefix_name'] = str(save_path.relative_to(ROOT))
+    setting['error_p'] = 0.1
     sim_config.update(setting)
+    sim_config.show()
 
     sim_config.execute()
 
 
 def main():
-    execute()
-    plot_para(name='test', duration=10, num_flows=3, para='cwnd')
-    plot_algorithm(name='test', duration=10, flow=0)
+    name = 'test2'
+    execute(name=name)
+    plot_para(name=name, duration=10, num_flows=3, para='cwnd')
+    plot_algorithm(name=name, duration=10, flow=0)
 
 
 if __name__ == '__main__':
