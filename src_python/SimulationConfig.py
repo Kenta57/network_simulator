@@ -17,7 +17,8 @@ class SimulationConfig:
             'tracing':True, 
             'duration':100, 
             'prefix_name':'result/test',
-            'error_p':0.0, 
+            'error_p_local':0.0, 
+            'error_p_global':0.0, 
             'bandwidth':"1Mbps", 
             'delay':"1ms",
             'access_bandwidth':"100Mbps", 
@@ -49,6 +50,7 @@ class SimulationConfig:
     def execute(self):
         if self.cmd is None:
             self.make_command()
+        print(self.cmd)
         subprocess.check_output(self.cmd, shell=True, cwd=str(ROOT)).decode()
 
     def show(self):
