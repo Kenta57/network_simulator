@@ -352,7 +352,8 @@ GetP2PLink (std::string bandwidth, std::string delay, uint32_t q_size)
 int main (int argc, char *argv[])
 {
   std::string transport_prot = "TcpCubic";
-  double error_p = 0.0;
+  double error_p_local = 0.0;
+  double error_p_global = 0.0;
   std::string bandwidth = "1Mbps";
   std::string delay = "1ms";
   std::string access_bandwidth = "100Mbps";
@@ -373,7 +374,8 @@ int main (int argc, char *argv[])
   cmd.AddValue ("transport_prot", "Transport protocol to use: TcpNewReno, "
                 "TcpHybla, TcpHighSpeed, TcpHtcp, TcpVegas, TcpScalable, TcpVeno, "
                 "TcpBic, TcpCubic, TcpBbr, TcpYeah, TcpIllinois, TcpWestwood, TcpWestwoodPlus ", transport_prot);
-  cmd.AddValue ("error_p", "Packet error rate", error_p);
+  cmd.AddValue ("error_p_local", "Packet error rate", error_p_local);
+  cmd.AddValue ("error_p_global", "Packet error rate", error_p_global);
   cmd.AddValue ("bandwidth", "Bottleneck bandwidth", bandwidth);
   cmd.AddValue ("delay", "Bottleneck delay", delay);
   cmd.AddValue ("access_bandwidth", "Access link bandwidth", access_bandwidth);
@@ -446,21 +448,44 @@ int main (int argc, char *argv[])
   // std::auto_ptr<int> ptr(new int(10));
   // のように動的にメモリを確保する
 
+  // 確率分布の種類を定義
   Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable> ();
-  // 確率分布
+  // シード値を決定
   uv->SetStream (50);
-  RateErrorModel error_model;
-  // 確率分布の決定
-  error_model.SetRandomVariable (uv);
-  // パケットベースのユニット
-  error_model.SetUnit (RateErrorModel::ERROR_UNIT_PACKET);
+  RateErrorModel error_model_local;
+  // error_model_localに確率分布を設定
+  error_model_local.SetRandomVariable (uv);
+  // パケットベースのユニットの設定
+  error_model_local.SetUnit (RateErrorModel::ERROR_UNIT_PACKET);
   // ロス率を決定
-  error_model.SetRate (error_p);
+  error_model_local.SetRate (error_p_local);
+
+  RateErrorModel error_model_global;
+  // error_model_localに確率分布を設定
+  error_model_global.SetRandomVariable (uv);
+  // パケットベースのユニットの設定
+  error_model_global.SetUnit (RateErrorModel::ERROR_UNIT_PACKET);
+  // ロス率を決定
+  error_model_global.SetRate (error_p_global);
 
   // 上でGetP2PLink関数を定義, 引数の通りのようなpointtopointhelperを返す関数(queueはdroptail)
   PointToPointHelper LocalLink = GetP2PLink ("10Mbps", access_delay, q_size);
   PointToPointHelper GwLink = GetP2PLink ("20Mbps", delay, q_size);
   PointToPointHelper UnReLink = GetP2PLink ("10Mbps", delay, q_size);
+
+  // 1本目のフローのエラー率の決定(下流)
+  PointToPointHelper LocalInitialLink = GetP2PLink ("10Mbps", access_delay, q_size);
+  if(error_p_local > 0){
+    LocalInitialLink.SetDeviceAttribute ("ReceiveErrorModel", PointerValue (&error_model_local));
+  }
+
+  // 1本目のフローのエラー率の決定(上流)
+  PointToPointHelper UnReInitialLink = GetP2PLink ("10Mbps", delay, q_size);
+  if(error_p_global > 0){
+    UnReInitialLink.SetDeviceAttribute ("ReceiveErrorModel", PointerValue (&error_model_global));
+  }
+
+  // GwLink.SetDeviceAttribute ("ReceiveErrorModel", PointerValue (&error_model));
 
   // プロトコルスタックの決定
   InternetStackHelper stack;
@@ -479,7 +504,11 @@ int main (int argc, char *argv[])
       // ネットデバイス(インターフェース)の設定
       NetDeviceContainer devices;
       // LocalLinkの設定のリンクをsourcesのi番目とgatewaysの0番目のノードに張る
-      devices = LocalLink.Install (sources.Get (i), gateways.Get (0));
+      if(i==0){
+        devices = LocalInitialLink.Install (sources.Get (i), gateways.Get (0));
+      }else{
+        devices = LocalLink.Install (sources.Get (i), gateways.Get (0));
+      }
       // addressで設定したネットワーク番号をインクリメントして新しいネットワークの割り当て用のIpv4AddressHelperを作るイメージ
       address.NewNetwork ();
       // ipアドレスの割り当て
@@ -493,7 +522,12 @@ int main (int argc, char *argv[])
         StartQueueTrace(devices.Get(0), "packets", prefix_file_name + "-queue-" + std::to_string(q++) + ".data");
       }
 
-      devices = UnReLink.Install (gateways.Get (1), sinks.Get (i));
+      if(i==0){
+        devices = UnReInitialLink.Install (gateways.Get (1), sinks.Get (i));
+      }else{
+        devices = UnReLink.Install (gateways.Get (1), sinks.Get (i));
+      }
+
       address.NewNetwork ();
       interfaces = address.Assign (devices);
       StartQueueTrace(devices.Get(0), "packets", prefix_file_name + "-queue-" + std::to_string(q++) + ".data");
