@@ -142,7 +142,8 @@ def plot_para(name, duration, num_flows, para):
     for index, path in enumerate(paths):
         data = read_data(path, duration)
         plt.subplot(4, 1, index+1)
-        plot_metric(data, duration, para)
+        x_ticks = index+1==num_flows 
+        plot_metric(data, duration, para, None, 1, x_ticks)
 
     # 保存
     plt.savefig(str(save_path/f'{name}-{para}-flows.png'))
@@ -180,16 +181,16 @@ def plot_algorithm(name, duration, flow):
     # 保存
     plt.savefig(str(save_path/f'{name}-flow{flow}.png'))
 
-def execute(name, duration):
+def execute(filename, name, duration):
     save_path = ROOT / 'result' / name
     save_path.mkdir(exist_ok=True)
     save_path = save_path / name
 
-    sim_config = SimulationConfig()
+    sim_config = SimulationConfig(filename)
     setting = {}
     setting['duration'] = duration
     setting['prefix_name'] = str(save_path.relative_to(ROOT))
-    setting['error_p_local'] = 0.01
+    # setting['error_p_local'] = 0.01
     setting['pcap_tracing'] = True
     sim_config.update(setting)
     # sim_config.show()
@@ -198,9 +199,10 @@ def execute(name, duration):
 
 
 def main():
-    name = 'test8'
+    filename = 'mytest'
+    name = 'test'
     duration = 10
-    execute(name=name, duration=duration)
+    execute(filename=filename, name=name, duration=duration)
     plot_para(name=name, duration=duration, num_flows=3, para='cwnd')
     plot_algorithm(name=name, duration=duration, flow=0)
 
