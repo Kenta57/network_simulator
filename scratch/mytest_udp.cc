@@ -490,8 +490,6 @@ int main (int argc, char *argv[])
     UnReInitialLink.SetDeviceAttribute ("ReceiveErrorModel", PointerValue (&error_model_global));
   }
 
-  // GwLink.SetDeviceAttribute ("ReceiveErrorModel", PointerValue (&error_model));
-
   // プロトコルスタックの決定
   InternetStackHelper stack;
   stack.InstallAll ();
@@ -556,19 +554,27 @@ int main (int argc, char *argv[])
   interfaces = address.Assign (devices);
   
   uint16_t port = 4000;
-  UdpServerHelper udpServerHelper = UdpServerHelper (port);
-  ApplicationContainer serverApps = udpServerHelper.Install (udp_users.Get(0));
-  serverApps.Start (Seconds (5));
-  serverApps.Stop (Seconds (7));
 
-  Address serverAddress (udp_sink_interfaces.GetAddress (0));
-  UdpClientHelper udpClient(serverAddress, port);
-  uint32_t MaxPacketSize = 1472; 
-  udpClient.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
-  udpClient.SetAttribute ("MaxPackets", UintegerValue (0));
-  ApplicationContainer clientApps = udpClient.Install (udp_users.Get (1));
-  clientApps.Start (Seconds (5));
-  clientApps.Stop (Seconds (7));
+  Address srcUdpAddress(InetSocketAddress (udp_sink_interfaces.GetAddress (0), port));
+  OnOffHelper clientHelper ("ns3::UdpSocketFactory", srcUdpAddress);
+  clientHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+  clientHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+  clientHelper.SetAttribute ("DataRate", DataRateValue (DataRate ("100Mb/s")));
+  clientHelper.SetAttribute ("PacketSize", UintegerValue (1000));
+  clientHelper.SetAttribute ("MaxBytes", UintegerValue (0));
+
+  AddressValue remoteAddress(InetSocketAddress (interfaces.GetAddress (0), port));
+  clientHelper.SetAttribute ("Remote", remoteAddress);
+  ApplicationContainer sourceUdpApp = clientHelper.Install (udp_users.Get (0));
+  sourceUdpApp.Start(Seconds (5));
+  sourceUdpApp.Stop (Seconds (7));
+
+
+  Address sinkAddress (InetSocketAddress (interfaces.GetAddress (0), port));
+  PacketSinkHelper sinkHelper ("ns3::UdpSocketFactory", sinkAddress);
+  ApplicationContainer sinkUdpApp = sinkHelper.Install (udp_users.Get (1));
+  sinkUdpApp.Start (Seconds (5));
+  sinkUdpApp.Stop (Seconds (7));
 
   NS_LOG_INFO ("Initialize Global Routing.");
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
