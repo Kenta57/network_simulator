@@ -572,16 +572,14 @@ int main (int argc, char *argv[])
   clientHelper.SetAttribute ("MaxBytes", UintegerValue (0));
 
   // i番目のsourceのノードに設定したアプリケーションを置く
-  // ApplicationContainer sourceUdpApp = clientHelper.Install (udp_users.Get (0));
-  ApplicationContainer sourceUdpApp = clientHelper.Install (udp_users.Get (1));
+  ApplicationContainer sourceUdpApp = clientHelper.Install (udp_users.Get (0));
   // アプリケーションの開始, 終了時刻を決定
   sourceUdpApp.Start(Seconds (5));
   sourceUdpApp.Stop (Seconds (7));
 
   // TcpSocketFactoryはTCP socketインスタンスを作るためのapi, rx(reception)用のソケットのプロトコルの決定？
   sinkHelper.SetAttribute ("Protocol", TypeIdValue (UdpSocketFactory::GetTypeId ()));
-  // ApplicationContainer sinkApp = sinkHelper.Install (udp_users.Get (1));
-  ApplicationContainer sinkApp = sinkHelper.Install (udp_users.Get (0));
+  ApplicationContainer sinkApp = sinkHelper.Install (udp_users.Get (1));
   // アプリケーションの開始, 終了時刻を決定
   sinkApp.Start (Seconds (5));
   sinkApp.Stop (Seconds (7));
