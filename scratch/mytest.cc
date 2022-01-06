@@ -485,8 +485,6 @@ int main (int argc, char *argv[])
     UnReInitialLink.SetDeviceAttribute ("ReceiveErrorModel", PointerValue (&error_model_global));
   }
 
-  // GwLink.SetDeviceAttribute ("ReceiveErrorModel", PointerValue (&error_model));
-
   // プロトコルスタックの決定
   InternetStackHelper stack;
   stack.InstallAll ();
