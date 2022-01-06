@@ -71,7 +71,7 @@ Ptr<OutputStreamWrapper> ackStream;
 Ptr<OutputStreamWrapper> congStateStream;
 uint32_t cWndValue;
 uint32_t ssThreshValue;
-double TH_INTERVAL = 5.0;
+double TH_INTERVAL = 1.0;
 
 // トレース用コールバック関数の設定 関数の引数は決まっている
 static void
@@ -473,10 +473,10 @@ int main (int argc, char *argv[])
 
   // 上でGetP2PLink関数を定義, 引数の通りのようなpointtopointhelperを返す関数(queueはdroptail)
   PointToPointHelper LocalLink = GetP2PLink ("10Mbps", access_delay, q_size);
-  PointToPointHelper GwLink = GetP2PLink ("20Mbps", delay, q_size);
+  PointToPointHelper GwLink = GetP2PLink ("30Mbps", delay, q_size);
   PointToPointHelper UnReLink = GetP2PLink ("10Mbps", delay, q_size);
-  PointToPointHelper UDPLocalLink = GetP2PLink ("100Mbps", access_delay, q_size);
-  PointToPointHelper UDPUnReLink = GetP2PLink ("100Mbps", delay, q_size);
+  PointToPointHelper UDPLocalLink = GetP2PLink ("1000Mbps", access_delay, q_size);
+  PointToPointHelper UDPUnReLink = GetP2PLink ("1000Mbps", delay, q_size);
 
   // 1本目のフローのエラー率の決定(下流)
   PointToPointHelper LocalInitialLink = GetP2PLink ("10Mbps", access_delay, q_size);
@@ -552,29 +552,39 @@ int main (int argc, char *argv[])
   devices = UDPUnReLink.Install (gateways.Get (1), udp_users.Get (1));
   address.NewNetwork ();
   interfaces = address.Assign (devices);
-  
-  uint16_t port = 4000;
 
-  Address srcUdpAddress(InetSocketAddress (udp_sink_interfaces.GetAddress (0), port));
-  OnOffHelper clientHelper ("ns3::UdpSocketFactory", srcUdpAddress);
+  uint16_t port = 4000;
+  // アドレスの設定 GetAnyは0.0.0.0を表す
+  Address sinkLocalAddress (InetSocketAddress (Ipv4Address::GetAny (), port));
+  // TCPの受信端(sink)はPacketSinkHelperで作る. 
+  PacketSinkHelper sinkHelper ("ns3::UdpSocketFactory", sinkLocalAddress);
+  // sinkのipアドレスとポート
+  AddressValue remoteAddress (InetSocketAddress (interfaces.GetAddress (1, 0), port));
+
+  // BulkSendApplicationはできる限り速くデータを送信するトラフィックジェネレータ　インスタンスの用意
+  OnOffHelper clientHelper ("ns3::UdpSocketFactory", Address());
+  // インスタンスの属性設定
+  clientHelper.SetAttribute ("Remote", remoteAddress);
   clientHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
   clientHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
   clientHelper.SetAttribute ("DataRate", DataRateValue (DataRate ("100Mb/s")));
   clientHelper.SetAttribute ("PacketSize", UintegerValue (1000));
   clientHelper.SetAttribute ("MaxBytes", UintegerValue (0));
 
-  AddressValue remoteAddress(InetSocketAddress (interfaces.GetAddress (0), port));
-  clientHelper.SetAttribute ("Remote", remoteAddress);
-  ApplicationContainer sourceUdpApp = clientHelper.Install (udp_users.Get (0));
+  // i番目のsourceのノードに設定したアプリケーションを置く
+  // ApplicationContainer sourceUdpApp = clientHelper.Install (udp_users.Get (0));
+  ApplicationContainer sourceUdpApp = clientHelper.Install (udp_users.Get (1));
+  // アプリケーションの開始, 終了時刻を決定
   sourceUdpApp.Start(Seconds (5));
   sourceUdpApp.Stop (Seconds (7));
 
-
-  Address sinkAddress (InetSocketAddress (interfaces.GetAddress (0), port));
-  PacketSinkHelper sinkHelper ("ns3::UdpSocketFactory", sinkAddress);
-  ApplicationContainer sinkUdpApp = sinkHelper.Install (udp_users.Get (1));
-  sinkUdpApp.Start (Seconds (5));
-  sinkUdpApp.Stop (Seconds (7));
+  // TcpSocketFactoryはTCP socketインスタンスを作るためのapi, rx(reception)用のソケットのプロトコルの決定？
+  sinkHelper.SetAttribute ("Protocol", TypeIdValue (UdpSocketFactory::GetTypeId ()));
+  // ApplicationContainer sinkApp = sinkHelper.Install (udp_users.Get (1));
+  ApplicationContainer sinkApp = sinkHelper.Install (udp_users.Get (0));
+  // アプリケーションの開始, 終了時刻を決定
+  sinkApp.Start (Seconds (5));
+  sinkApp.Stop (Seconds (7));
 
   NS_LOG_INFO ("Initialize Global Routing.");
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
