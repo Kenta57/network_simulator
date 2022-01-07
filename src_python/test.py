@@ -191,6 +191,8 @@ def execute(filename, name, duration):
     setting['duration'] = duration
     setting['prefix_name'] = str(save_path.relative_to(ROOT))
     # setting['error_p_local'] = 0.01
+    setting['udp_flag'] = True
+    setting['udp_bandwidth'] = '100Mbps'
     setting['pcap_tracing'] = True
     sim_config.update(setting)
     # sim_config.show()
@@ -200,7 +202,7 @@ def execute(filename, name, duration):
 
 def main():
     filename = 'mytest'
-    name = 'test'
+    name = 'test_3'
     duration = 10
     execute(filename=filename, name=name, duration=duration)
     plot_para(name=name, duration=duration, num_flows=3, para='cwnd')

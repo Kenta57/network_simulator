@@ -24,6 +24,8 @@ class SimulationConfig:
             'delay':"1ms",
             'access_bandwidth':"100Mbps", 
             'access_delay':"10ms", 
+            'udp_flag':True, 
+            'udp_bandwidth':"100Mbps", 
             'data':0, 
             'mtu':1500, 
             'flow_monitor':False, 
@@ -59,7 +61,8 @@ class SimulationConfig:
         return self.parameters
 
 if __name__=='__main__':
-    s = SimulationConfig()
+    filename = 'mytest'
+    s = SimulationConfig(filename)
     setting = {}
     setting['duration'] = 10
     s.update(setting)
