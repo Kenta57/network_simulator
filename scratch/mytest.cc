@@ -73,7 +73,7 @@ Ptr<OutputStreamWrapper> ackStream;
 Ptr<OutputStreamWrapper> congStateStream;
 uint32_t cWndValue;
 uint32_t ssThreshValue;
-double TH_INTERVAL = 5.0;
+double TH_INTERVAL = 1.0;
 
 // トレース用コールバック関数の設定 関数の引数は決まっている
 static void
@@ -359,6 +359,8 @@ int main (int argc, char *argv[])
   std::string delay = "1ms";
   std::string access_bandwidth = "100Mbps";
   std::string access_delay = "10ms";
+  bool udp_flag = true;
+  std::string udp_bandwidth = "100Mbps";
   bool tracing = false;
   std::string prefix_file_name = "TcpDelayBase";
   double data_mbytes = 0;
@@ -379,6 +381,8 @@ int main (int argc, char *argv[])
   cmd.AddValue ("bandwidth", "Bottleneck bandwidth", bandwidth);
   cmd.AddValue ("delay", "Bottleneck delay", delay);
   cmd.AddValue ("access_bandwidth", "Access link bandwidth", access_bandwidth);
+  cmd.AddValue ("udp_flag", "Enable Udp flow", udp_flag);
+  cmd.AddValue ("udp_bandwidth", "Udp link bandwidth", udp_bandwidth);
   cmd.AddValue ("access_delay", "Access link delay", access_delay);
   cmd.AddValue ("tracing", "Flag to enable/disable tracing", tracing);
   cmd.AddValue ("prefix_name", "Prefix of output trace file", prefix_file_name);
@@ -431,6 +435,9 @@ int main (int argc, char *argv[])
   NodeContainer sinks;
   sinks.Create (num_flows);
 
+  NodeContainer udp_users;
+  udp_users.Create (2);
+
   // Configure the error model
   // Here we use RateErrorModel with packet error rate
 
@@ -480,12 +487,14 @@ int main (int argc, char *argv[])
   // 上でGetP2PLink関数を定義, 引数の通りのようなpointtopointhelperを返す関数(queueはdroptail)
   PointToPointHelper GwLink = GetP2PLink ("20Mbps", delay, q_size);
   PointToPointHelper UnReLink = GetP2PLink ("10Mbps", delay, q_size);
+  PointToPointHelper UDPLocalLink = GetP2PLink ("1000Mbps", access_delay, q_size);
+  PointToPointHelper UDPUnReLink = GetP2PLink ("1000Mbps", delay, q_size);
 
   // パケットロス率が0より大きければ, error_modelを設置
   if(error_p > 0){
     GwLink.SetDeviceAttribute ("ReceiveErrorModel", PointerValue (&error_model));
   }
-
+  
   // プロトコルスタックの決定
   InternetStackHelper stack;
   stack.InstallAll ();
@@ -497,6 +506,7 @@ int main (int argc, char *argv[])
   // 
   Ipv4InterfaceContainer sink_interfaces;
 
+  // tcp_userの設定
   for (int i = 0; i < num_flows; i++)
     {
       int q = 0;
@@ -528,6 +538,50 @@ int main (int argc, char *argv[])
       sink_interfaces.Add (interfaces.Get (1));
 
     }
+
+  // udp_userの設定
+  Ipv4InterfaceContainer udp_sink_interfaces;
+
+  NetDeviceContainer devices = UDPLocalLink.Install (udp_users.Get (0), gateways.Get (0));
+  address.NewNetwork ();
+  Ipv4InterfaceContainer interfaces = address.Assign (devices);
+  udp_sink_interfaces.Add (interfaces.Get (0));
+
+  devices = UDPUnReLink.Install (gateways.Get (1), udp_users.Get (1));
+  address.NewNetwork ();
+  interfaces = address.Assign (devices);
+
+  uint16_t port = 4000;
+  // アドレスの設定 GetAnyは0.0.0.0を表す
+  Address sinkLocalAddress (InetSocketAddress (Ipv4Address::GetAny (), port));
+  // TCPの受信端(sink)はPacketSinkHelperで作る. 
+  PacketSinkHelper sinkHelper ("ns3::UdpSocketFactory", sinkLocalAddress);
+  // sinkのipアドレスとポート
+  AddressValue remoteAddress (InetSocketAddress (interfaces.GetAddress (1, 0), port));
+
+  // BulkSendApplicationはできる限り速くデータを送信するトラフィックジェネレータ　インスタンスの用意
+  OnOffHelper clientHelper ("ns3::UdpSocketFactory", Address());
+  // インスタンスの属性設定
+  clientHelper.SetAttribute ("Remote", remoteAddress);
+  // udp_flowのon, offの切り替え
+  clientHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant="+std::to_string(udp_flag)+"]"));
+  clientHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant="+std::to_string(!udp_flag)+"]"));
+  clientHelper.SetAttribute ("DataRate", DataRateValue (DataRate (udp_bandwidth)));
+  clientHelper.SetAttribute ("PacketSize", UintegerValue (1000));
+  clientHelper.SetAttribute ("MaxBytes", UintegerValue (0));
+
+  // i番目のsourceのノードに設定したアプリケーションを置く
+  ApplicationContainer sourceUdpApp = clientHelper.Install (udp_users.Get (0));
+  // アプリケーションの開始, 終了時刻を決定
+  sourceUdpApp.Start(Seconds (7));
+  sourceUdpApp.Stop (Seconds (9));
+
+  // TcpSocketFactoryはTCP socketインスタンスを作るためのapi, rx(reception)用のソケットのプロトコルの決定？
+  sinkHelper.SetAttribute ("Protocol", TypeIdValue (UdpSocketFactory::GetTypeId ()));
+  ApplicationContainer sinkApp = sinkHelper.Install (udp_users.Get (1));
+  // アプリケーションの開始, 終了時刻を決定
+  sinkApp.Start (Seconds (7));
+  sinkApp.Stop (Seconds (9));
 
   NS_LOG_INFO ("Initialize Global Routing.");
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();

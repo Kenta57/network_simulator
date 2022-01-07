@@ -9,8 +9,9 @@ ROOT = Path.cwd().parent
 class SimulationConfig:
     """ シミュレーションを行う際の設定を管理するクラス """
 
-    def __init__(self):
+    def __init__(self, filename):
         self.cmd = None
+        self.filename = filename
 
         self.parameters = {
             'transport_prot':'TcpNewReno', 
@@ -22,6 +23,8 @@ class SimulationConfig:
             'delay':"1ms",
             'access_bandwidth':"100Mbps", 
             'access_delay':"10ms", 
+            'udp_flag':True, 
+            'udp_bandwidth':"100Mbps", 
             'data':0, 
             'mtu':1500, 
             'flow_monitor':False, 
@@ -39,7 +42,7 @@ class SimulationConfig:
 
     # コマンドライン引数を追加したコマンドを作成する関数
     def make_command(self):
-        cmd = './waf --run "mytest'
+        cmd = f'./waf --run "{self.filename}'
         for key, value in self.parameters.items():
             cmd += f' --{key}={value}'
         cmd += '"'
@@ -57,7 +60,8 @@ class SimulationConfig:
         return self.parameters
 
 if __name__=='__main__':
-    s = SimulationConfig()
+    filename = 'mytest'
+    s = SimulationConfig(filename)
     setting = {}
     setting['duration'] = 10
     s.update(setting)
