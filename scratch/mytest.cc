@@ -37,6 +37,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <unistd.h>
+
 
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
@@ -54,7 +56,7 @@
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE ("TcpVariantsComparison");
+NS_LOG_COMPONENT_DEFINE ("TcpFlows_Simulation");
 
 bool firstCwnd = true;
 bool firstSshThr = true;
@@ -352,8 +354,7 @@ GetP2PLink (std::string bandwidth, std::string delay, uint32_t q_size)
 int main (int argc, char *argv[])
 {
   std::string transport_prot = "TcpCubic";
-  double error_p_local = 0.0;
-  double error_p_global = 0.0;
+  double error_p = 0.001;
   std::string bandwidth = "1Mbps";
   std::string delay = "1ms";
   std::string access_bandwidth = "100Mbps";
@@ -376,8 +377,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("transport_prot", "Transport protocol to use: TcpNewReno, "
                 "TcpHybla, TcpHighSpeed, TcpHtcp, TcpVegas, TcpScalable, TcpVeno, "
                 "TcpBic, TcpCubic, TcpBbr, TcpYeah, TcpIllinois, TcpWestwood, TcpWestwoodPlus ", transport_prot);
-  cmd.AddValue ("error_p_local", "Packet error rate", error_p_local);
-  cmd.AddValue ("error_p_global", "Packet error rate", error_p_global);
+  cmd.AddValue ("error_p", "Packet error rate", error_p);
   cmd.AddValue ("bandwidth", "Bottleneck bandwidth", bandwidth);
   cmd.AddValue ("delay", "Bottleneck delay", delay);
   cmd.AddValue ("access_bandwidth", "Access link bandwidth", access_bandwidth);
@@ -458,42 +458,43 @@ int main (int argc, char *argv[])
   // 確率分布の種類を定義
   Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable> ();
   // シード値を決定
-  uv->SetStream (50);
-  RateErrorModel error_model_local;
-  // error_model_localに確率分布を設定
-  error_model_local.SetRandomVariable (uv);
+  int seed(getpid());
+  uv->SetStream (seed);
+  NS_LOG_INFO ("seed値 : " + std::to_string(seed));
+  RateErrorModel error_model;
+  // error_modelに確率分布を設定
+  error_model.SetRandomVariable (uv);
   // パケットベースのユニットの設定
-  error_model_local.SetUnit (RateErrorModel::ERROR_UNIT_PACKET);
+  error_model.SetUnit (RateErrorModel::ERROR_UNIT_PACKET);
   // ロス率を決定
-  error_model_local.SetRate (error_p_local);
+  error_model.SetRate (error_p);
 
-  RateErrorModel error_model_global;
-  // error_model_localに確率分布を設定
-  error_model_global.SetRandomVariable (uv);
-  // パケットベースのユニットの設定
-  error_model_global.SetUnit (RateErrorModel::ERROR_UNIT_PACKET);
-  // ロス率を決定
-  error_model_global.SetRate (error_p_global);
+  // globalのdelayの乱数の準備
+  Ptr<UniformRandomVariable> uniformRv = CreateObject<UniformRandomVariable> ();
+  seed++;
+  NS_LOG_INFO ("seed値 : " + std::to_string(seed));
+  uniformRv->SetStream (seed);
+
+  // globalのLinkの設定
+  PointToPointHelper *LocalLinks;
+  LocalLinks = new PointToPointHelper [num_flows];
+  for(int i = 0; i < num_flows; i++){
+    delay = std::to_string(uniformRv->GetInteger (1, 50)) + "ms";
+    LocalLinks[i] = GetP2PLink ("10Mbps", delay, q_size);
+    NS_LOG_INFO ("delay : " + delay);
+  }
 
   // 上でGetP2PLink関数を定義, 引数の通りのようなpointtopointhelperを返す関数(queueはdroptail)
-  PointToPointHelper LocalLink = GetP2PLink ("10Mbps", access_delay, q_size);
-  PointToPointHelper GwLink = GetP2PLink ("30Mbps", delay, q_size);
+  PointToPointHelper GwLink = GetP2PLink ("20Mbps", delay, q_size);
   PointToPointHelper UnReLink = GetP2PLink ("10Mbps", delay, q_size);
   PointToPointHelper UDPLocalLink = GetP2PLink ("1000Mbps", access_delay, q_size);
   PointToPointHelper UDPUnReLink = GetP2PLink ("1000Mbps", delay, q_size);
 
-  // 1本目のフローのエラー率の決定(下流)
-  PointToPointHelper LocalInitialLink = GetP2PLink ("10Mbps", access_delay, q_size);
-  if(error_p_local > 0){
-    LocalInitialLink.SetDeviceAttribute ("ReceiveErrorModel", PointerValue (&error_model_local));
+  // パケットロス率が0より大きければ, error_modelを設置
+  if(error_p > 0){
+    GwLink.SetDeviceAttribute ("ReceiveErrorModel", PointerValue (&error_model));
   }
-
-  // 1本目のフローのエラー率の決定(上流)
-  PointToPointHelper UnReInitialLink = GetP2PLink ("10Mbps", delay, q_size);
-  if(error_p_global > 0){
-    UnReInitialLink.SetDeviceAttribute ("ReceiveErrorModel", PointerValue (&error_model_global));
-  }
-
+  
   // プロトコルスタックの決定
   InternetStackHelper stack;
   stack.InstallAll ();
@@ -512,11 +513,8 @@ int main (int argc, char *argv[])
       // ネットデバイス(インターフェース)の設定
       NetDeviceContainer devices;
       // LocalLinkの設定のリンクをsourcesのi番目とgatewaysの0番目のノードに張る
-      if(i==0){
-        devices = LocalInitialLink.Install (sources.Get (i), gateways.Get (0));
-      }else{
-        devices = LocalLink.Install (sources.Get (i), gateways.Get (0));
-      }
+      devices = LocalLinks[i].Install (sources.Get (i), gateways.Get (0));
+    
       // addressで設定したネットワーク番号をインクリメントして新しいネットワークの割り当て用のIpv4AddressHelperを作るイメージ
       address.NewNetwork ();
       // ipアドレスの割り当て
@@ -530,11 +528,7 @@ int main (int argc, char *argv[])
         StartQueueTrace(devices.Get(0), "packets", prefix_file_name + "-queue-" + std::to_string(q++) + ".data");
       }
 
-      if(i==0){
-        devices = UnReInitialLink.Install (gateways.Get (1), sinks.Get (i));
-      }else{
-        devices = UnReLink.Install (gateways.Get (1), sinks.Get (i));
-      }
+      devices = UnReLink.Install (gateways.Get (1), sinks.Get (i));
 
       address.NewNetwork ();
       interfaces = address.Assign (devices);
@@ -664,7 +658,9 @@ int main (int argc, char *argv[])
   if (pcap)
     {
       UnReLink.EnablePcapAll (prefix_file_name, true);
-      LocalLink.EnablePcapAll (prefix_file_name, true);
+      for(int i = 0; i < num_flows; i++){
+        LocalLinks[i].EnablePcapAll (prefix_file_name, true);
+      }
     }
 
   // Flow monitor
