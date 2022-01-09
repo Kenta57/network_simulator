@@ -4,10 +4,11 @@ from pathlib import Path
 ROOT = Path.cwd().parent
 
 class Extractor:
-    def __init__(self, target_path, prefix):
+    def __init__(self, target_path, sack_option=True, prefix='inflight'):
         self.cap = pyshark.FileCapture(str(target_path))
         self.prefix = prefix
-        self.save_dir = ROOT / 'src_python'
+        self.save_dir = target_path.parent
+        self.sack_option = sack_option
         self.save_paths = [self.save_dir / (self.prefix + f'-flow{i}.data') for i in range(3)]
 
         self.clean_file()
@@ -37,20 +38,21 @@ class Extractor:
         ack = int(packet.tcp.ack)
         nxt_seq = int(packet.tcp.nxtseq)
         if seq == 1 and not(ack == 1):
-            try:
-                sack_option_raw = packet.tcp.options_sack
-                ack_virtual = self.get_virtual_ack(sack_option_raw, ack)
-                self.highest_ack[stream_idx] = ack_virtual
-            except AttributeError:
+            if self.sack_option:
+                try:
+                    sack_option_raw = packet.tcp.options_sack
+                    ack_virtual = self.get_virtual_ack(sack_option_raw, ack)
+                    self.highest_ack[stream_idx] = ack_virtual
+                except AttributeError:
+                    self.highest_ack[stream_idx] = max(ack, self.highest_ack[stream_idx])
+            else:
                 self.highest_ack[stream_idx] = max(ack, self.highest_ack[stream_idx])
-            # self.highest_ack[stream_idx] = max(ack, self.highest_ack[stream_idx])
         if not(seq == 1) and ack == 1:
             highest_nxt_seq = nxt_seq
             __inflight = highest_nxt_seq - self.highest_ack[stream_idx]
             self.inflight[stream_idx] = __inflight if __inflight > 0 else self.inflight[stream_idx]
-            time = packet.tcp.time_relative
-            self.f_streams[stream_idx].write(f'{index+1} {time} {self.inflight[stream_idx]} {stream_idx}\n')
-            # return time, inflight
+            time = packet.sniff_timestamp
+            self.f_streams[stream_idx].write(f'{time} {self.inflight[stream_idx]}\n')
 
     def get_virtual_ack(self, byte_raw, ack):
         sack = self.get_sack_list(byte_raw)
@@ -72,8 +74,7 @@ class Extractor:
 
 if __name__ == '__main__':
     target_path = ROOT / 'result' / 'udp_100Mbps' / 'udp_100Mbps-1-1.pcap'
-    prefix = 'new_data'
-    Ex = Extractor(target_path, prefix)
+    Ex = Extractor(target_path)
     Ex.extract_inflight()
     del Ex
 
