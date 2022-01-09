@@ -1,18 +1,22 @@
 import pyshark
 from pathlib import Path
 
+from Extractor import Extractor
+import plot
+
+
 ROOT = Path.cwd().parent
 
-path = ROOT / 'result' / 'test' / 'TcpNewReno-0-2.pcap'
+def main():
+    name = 'udp_100Mbps'
+    save_dir = ROOT / 'result' / name
+    target_path = save_dir / f'{name}-1-1.pcap'
+    Ex = Extractor(target_path, sack_option=True)
+    Ex.extract_inflight()
+    del Ex
+    plot.plot_para(name='pcap', duration=10, num_flows=3, para='inflight', save_dir=save_dir)
+
 
 if __name__ == '__main__':
-    cap = pyshark.FileCapture(str(path))
-    packet = cap[0]
-    packet.show()
-    
-    # tcpで使える関数
-    print(dir(packet.tcp))
-
-    # packetの到着時間
-    print(packet.sniff_time)
+    main()
 
