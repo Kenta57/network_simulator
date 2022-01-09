@@ -39,7 +39,7 @@ def analyze_pcap(name, duration,sack_option=True):
     Ex = Extractor(target_path, sack_option=sack_option)
     Ex.extract_inflight()
     del Ex
-    plot.plot_para(name=f'sack-{sack_option}', duration=duration, num_flows=3, para='inflight', save_dir=save_dir)
+    plot.plot_para(name=f'{name}-sack-{sack_option}', duration=duration, num_flows=3, para='inflight', save_dir=save_dir)
 
 def main():
     filename = 'mytest'
