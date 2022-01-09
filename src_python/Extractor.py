@@ -1,5 +1,6 @@
 import pyshark
 from pathlib import Path
+from tqdm import tqdm
 
 ROOT = Path.cwd().parent
 
@@ -9,7 +10,7 @@ class Extractor:
         self.prefix = prefix
         self.save_dir = target_path.parent
         self.sack_option = sack_option
-        self.save_paths = [self.save_dir / (self.prefix + f'-flow{i}.data') for i in range(3)]
+        self.save_paths = [self.save_dir / f'pcap-flw{i}-{self.prefix}.data' for i in range(3)]
 
         self.clean_file()
 
@@ -27,11 +28,11 @@ class Extractor:
             p.touch(exist_ok=True)
 
     def extract_inflight(self):
-        for i, packet in enumerate(self.cap):
+        for i, packet in tqdm(enumerate(self.cap)):
             transport_layer = packet.transport_layer
             if transport_layer == 'TCP':
                 stream_idx = int(packet.tcp.stream)
-                self.get_inflight(packet, stream_idx, i)
+                self.get_inflight(packet, stream_idx, i+1)
 
     def get_inflight(self, packet, stream_idx, index):
         seq = int(packet.tcp.seq)
@@ -52,7 +53,7 @@ class Extractor:
             __inflight = highest_nxt_seq - self.highest_ack[stream_idx]
             self.inflight[stream_idx] = __inflight if __inflight > 0 else self.inflight[stream_idx]
             time = packet.sniff_timestamp
-            self.f_streams[stream_idx].write(f'{time} {self.inflight[stream_idx]}\n')
+            self.f_streams[stream_idx].write(f'{index} {time} {self.inflight[stream_idx]}\n')
 
     def get_virtual_ack(self, byte_raw, ack):
         sack = self.get_sack_list(byte_raw)
@@ -63,9 +64,11 @@ class Extractor:
         return received+1
 
     def get_sack_list(self, byte_raw):
-        data = byte_raw.split(':00')
-        kind,length = data[0].split(':')
-        __sack = [int(''.join(d.split(':')),16) for d in data[1:]]
+        data = byte_raw.split(':')
+        kind, length = data[0:2]
+        data = data[2:]
+        n = len(data)//4
+        __sack = [int(''.join(data[4*i+1:4*i+4]),16) for i in range(n)]
         sack_cnt = len(__sack)//2
         sack = []
         for i in range(sack_cnt)[::-1]:
