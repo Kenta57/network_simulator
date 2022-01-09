@@ -130,8 +130,11 @@ def plot_para(name, duration, num_flows, para, save_dir):
         x_ticks = index+1==num_flows 
         plot_metric(data, duration, para, None, 1, x_ticks)
 
+    (save_dir / 'figure').mkdir(exist_ok=True)
+    save_path = save_dir / 'figure' / f'{name}-{para}-flows.png'
+
     # 保存
-    plt.savefig(str(save_dir/f'{name}-{para}-flows.png'))
+    plt.savefig(str(save_path))
 
 # algorithmのcwnd，ssth，rtt，cong-stateをプロットする関数．
 def plot_algorithm(name, duration, flow):

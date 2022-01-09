@@ -10,7 +10,7 @@ class Extractor:
         self.prefix = prefix
         self.save_dir = target_path.parent
         self.sack_option = sack_option
-        self.save_paths = [self.save_dir / f'pcap-flw{i}-{self.prefix}.data' for i in range(3)]
+        self.save_paths = [self.save_dir / f'sack-{self.sack_option}-flw{i}-{self.prefix}.data' for i in range(3)]
 
         self.clean_file()
 
