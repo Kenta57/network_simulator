@@ -54,10 +54,17 @@ class SimulationConfig:
             self.make_command()
         print(self.cmd)
         subprocess.check_output(self.cmd, shell=True, cwd=str(ROOT)).decode()
+        self.__setting_save()
 
     def show(self):
         print(self.parameters)
         return self.parameters
+
+    def __setting_save(self):
+        save_path = ROOT / (self.parameters['prefix_name'] + '_setting.txt')
+        with open(str(save_path), mode='w') as f:
+            for key, value in self.parameters.items():
+                f.write(f'{key} : {value}\n')
 
 if __name__=='__main__':
     filename = 'mytest'
