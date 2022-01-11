@@ -431,12 +431,9 @@ int main (int argc, char *argv[])
   NodeContainer gateways;
   gateways.Create (2);
   NodeContainer sources;
-  sources.Create (num_flows);
+  sources.Create (num_flows+1);
   NodeContainer sinks;
-  sinks.Create (num_flows);
-
-  NodeContainer udp_users;
-  udp_users.Create (2);
+  sinks.Create (num_flows+1);
 
   // Configure the error model
   // Here we use RateErrorModel with packet error rate
@@ -487,8 +484,8 @@ int main (int argc, char *argv[])
   // 上でGetP2PLink関数を定義, 引数の通りのようなpointtopointhelperを返す関数(queueはdroptail)
   PointToPointHelper GwLink = GetP2PLink ("20Mbps", delay, q_size);
   PointToPointHelper UnReLink = GetP2PLink ("10Mbps", delay, q_size);
-  PointToPointHelper UDPLocalLink = GetP2PLink ("1000Mbps", access_delay, q_size);
-  PointToPointHelper UDPUnReLink = GetP2PLink ("1000Mbps", delay, q_size);
+  PointToPointHelper UDPLocalLink = GetP2PLink ("1000Mbps", access_delay, 100);
+  PointToPointHelper UDPUnReLink = GetP2PLink ("1000Mbps", delay, 100);
 
   // パケットロス率が0より大きければ, error_modelを設置
   if(error_p > 0){
@@ -506,10 +503,10 @@ int main (int argc, char *argv[])
   // 
   Ipv4InterfaceContainer sink_interfaces;
 
+  int q = 0;
   // tcp_userの設定
   for (int i = 0; i < num_flows; i++)
     {
-      int q = 0;
       // ネットデバイス(インターフェース)の設定
       NetDeviceContainer devices;
       // LocalLinkの設定のリンクをsourcesのi番目とgatewaysの0番目のノードに張る
@@ -542,12 +539,12 @@ int main (int argc, char *argv[])
   // udp_userの設定
   Ipv4InterfaceContainer udp_sink_interfaces;
 
-  NetDeviceContainer devices = UDPLocalLink.Install (udp_users.Get (0), gateways.Get (0));
+  NetDeviceContainer devices = UDPLocalLink.Install (sources.Get (num_flows), gateways.Get (0));
   address.NewNetwork ();
   Ipv4InterfaceContainer interfaces = address.Assign (devices);
   udp_sink_interfaces.Add (interfaces.Get (0));
 
-  devices = UDPUnReLink.Install (gateways.Get (1), udp_users.Get (1));
+  devices = UDPUnReLink.Install (gateways.Get (1), sinks.Get (num_flows));
   address.NewNetwork ();
   interfaces = address.Assign (devices);
 
@@ -571,23 +568,23 @@ int main (int argc, char *argv[])
   clientHelper.SetAttribute ("MaxBytes", UintegerValue (0));
 
   // i番目のsourceのノードに設定したアプリケーションを置く
-  ApplicationContainer sourceUdpApp = clientHelper.Install (udp_users.Get (0));
+  ApplicationContainer sourceUdpApp = clientHelper.Install (sources.Get (num_flows));
   // アプリケーションの開始, 終了時刻を決定
-  sourceUdpApp.Start(Seconds (7));
-  sourceUdpApp.Stop (Seconds (9));
+  sourceUdpApp.Start(Seconds (start_time));
+  sourceUdpApp.Stop (Seconds (stop_time));
 
   // TcpSocketFactoryはTCP socketインスタンスを作るためのapi, rx(reception)用のソケットのプロトコルの決定？
   sinkHelper.SetAttribute ("Protocol", TypeIdValue (UdpSocketFactory::GetTypeId ()));
-  ApplicationContainer sinkApp = sinkHelper.Install (udp_users.Get (1));
+  ApplicationContainer sinkApp = sinkHelper.Install (sinks.Get (num_flows));
   // アプリケーションの開始, 終了時刻を決定
-  sinkApp.Start (Seconds (7));
-  sinkApp.Stop (Seconds (9));
+  sinkApp.Start (Seconds (start_time));
+  sinkApp.Stop (Seconds (stop_time));
 
   NS_LOG_INFO ("Initialize Global Routing.");
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
 
-  for (uint16_t i = 0; i < sources.GetN (); i++)
+  for (uint16_t i = 0; i < num_flows; i++)
     {
       uint16_t port = 50000 + i;
       // アドレスの設定 GetAnyは0.0.0.0を表す
