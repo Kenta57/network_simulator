@@ -26,8 +26,9 @@ def execute(filename, name, duration):
     setting['duration'] = duration
     setting['prefix_name'] = str(save_path.relative_to(ROOT))
     setting['error_p'] = 0.01
-    setting['udp_flag'] = False
-    # setting['udp_bandwidth'] = '100Mbps'
+    setting['bandwidth'] = '30Mbps'
+    setting['udp_flag'] = True
+    setting['udp_bandwidth'] = '10Mbps'
     setting['pcap_tracing'] = True
     sim_config.update(setting)
 
@@ -43,8 +44,8 @@ def analyze_pcap(name, duration,sack_option=True):
 
 def main():
     filename = 'mytest'
-    name = 'error_gw_0.01'
-    duration = 10
+    name = 'udp_2'
+    duration = 3
     save_dir = ROOT / 'result' / name
 
     execute(filename=filename, name=name, duration=duration)

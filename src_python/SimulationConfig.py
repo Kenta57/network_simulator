@@ -62,7 +62,7 @@ class SimulationConfig:
 
     def __setting_save(self):
         save_path = ROOT / (self.parameters['prefix_name'] + '_setting.txt')
-        with open(str(save_path), mode='w') as f:
+        with open(str(save_path), mode='a') as f:
             for key, value in self.parameters.items():
                 f.write(f'{key} : {value}\n')
 

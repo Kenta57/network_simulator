@@ -474,7 +474,7 @@ int main (int argc, char *argv[])
 
   std::ofstream writing_file;
   std::string filename = prefix_file_name + "_setting.txt";
-  writing_file.open(filename, std::ios::app);
+  writing_file.open(filename);
   // std::string writing_text = "アセンブリ言語以外の低水準言語を必要としないこと、使わない機能に時間的・空間的コストを必要としないことが、言語設計の重要な原則となっている。";
 
   // globalのLinkの設定
