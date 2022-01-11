@@ -472,20 +472,27 @@ int main (int argc, char *argv[])
   NS_LOG_INFO ("seed値 : " + std::to_string(seed));
   uniformRv->SetStream (seed);
 
+  std::ofstream writing_file;
+  std::string filename = prefix_file_name + "_setting.txt";
+  writing_file.open(filename, std::ios::app);
+  // std::string writing_text = "アセンブリ言語以外の低水準言語を必要としないこと、使わない機能に時間的・空間的コストを必要としないことが、言語設計の重要な原則となっている。";
+
   // globalのLinkの設定
   PointToPointHelper *LocalLinks;
   LocalLinks = new PointToPointHelper [num_flows];
   for(int i = 0; i < num_flows; i++){
     delay = std::to_string(uniformRv->GetInteger (1, 50)) + "ms";
-    LocalLinks[i] = GetP2PLink ("10Mbps", delay, q_size);
+    LocalLinks[i] = GetP2PLink (access_bandwidth, delay, q_size);
+    writing_file << "flow" + std::to_string(i) + "_delay : " + delay << std::endl;
     NS_LOG_INFO ("delay : " + delay);
   }
+  writing_file.close();
 
   // 上でGetP2PLink関数を定義, 引数の通りのようなpointtopointhelperを返す関数(queueはdroptail)
-  PointToPointHelper GwLink = GetP2PLink ("20Mbps", delay, q_size);
-  PointToPointHelper UnReLink = GetP2PLink ("10Mbps", delay, q_size);
-  PointToPointHelper UDPLocalLink = GetP2PLink ("1000Mbps", access_delay, 100);
-  PointToPointHelper UDPUnReLink = GetP2PLink ("1000Mbps", delay, 100);
+  PointToPointHelper GwLink = GetP2PLink (bandwidth, delay, q_size);
+  PointToPointHelper UnReLink = GetP2PLink (access_bandwidth, access_delay, q_size);
+  PointToPointHelper UDPLocalLink = GetP2PLink ("1000Mbps", access_delay, q_size);
+  PointToPointHelper UDPUnReLink = GetP2PLink ("1000Mbps", access_delay, q_size);
 
   // パケットロス率が0より大きければ, error_modelを設置
   if(error_p > 0){
