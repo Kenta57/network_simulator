@@ -21,6 +21,8 @@ class SimulationConfig:
             'prefix_name':'result/test',
             'bandwidth':"1Mbps", 
             'delay':"1ms",
+            'global_delay':"5ms",
+            'delay_random':True,
             'access_bandwidth':"100Mbps", 
             'access_delay':"10ms", 
             'udp_flag':True, 
@@ -29,7 +31,7 @@ class SimulationConfig:
             'mtu':1500, 
             'flow_monitor':False, 
             'pcap_tracing':False,
-            'q_size':100, 
+            'q_size':10, 
             'num_flows':3
         }
 
