@@ -51,6 +51,7 @@
 #include "ns3/enum.h"
 #include "ns3/event-id.h"
 #include "ns3/flow-monitor-helper.h"
+#include "ns3/flow-monitor-module.h"
 #include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/traffic-control-module.h"
 
@@ -674,16 +675,34 @@ int main (int argc, char *argv[])
 
   // Flow monitor
   FlowMonitorHelper flowHelper;
-  if (flow_monitor)
-    {
-      flowHelper.InstallAll ();
-    }
+  Ptr<FlowMonitor> monitor = flowHelper.InstallAll ();
+  // if (flow_monitor)
+  //   {
+  //     Ptr<FlowMonitor> monitor = flowHelper.InstallAll ();
+  //   }
 
   Simulator::Stop (Seconds (stop_time));
   Simulator::Run ();
 
   if (flow_monitor)
     {
+      std::ofstream writing_file;
+      std::string filename = prefix_file_name + "_flow_monitor.txt";
+      writing_file.open(filename);
+
+      monitor->CheckForLostPackets ();
+      Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowHelper.GetClassifier ());
+      FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
+      for(std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin(); i!=stats.end(); ++i){
+        Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+        writing_file << "Flow " << i->first  << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
+        writing_file << "  Tx Packets: " << i->second.txPackets << "\n";
+        writing_file << "  Rx Packets: " << i->second.rxPackets << "\n";
+        writing_file << "  lost Packets: " << i->second.lostPackets << "\n";
+      }
+
+      writing_file.close();
+
       flowHelper.SerializeToXmlFile (prefix_file_name + ".flowmonitor", true, true);
     }
 
