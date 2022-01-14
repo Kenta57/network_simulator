@@ -118,6 +118,40 @@ def plot_cong_state(
     else:
         plt.xticks([])
 
+def plot_cwnd_rtt(name, duration, num_flows, save_dir):
+    cwnd_paths = [save_dir / f'{name}-flw{i}-cwnd.data' for i in range(num_flows)]
+    rtt_paths = [save_dir / f'{name}-flw{i}-rtt.data' for i in range(num_flows)]
+
+    plt.figure(figsize=(36, 12))
+    plt.title(name)
+    for index, path in enumerate(cwnd_paths):
+        para = 'cwnd'
+        data = read_data(path, duration)
+        plt.subplot(2, 3, index+1)
+        # x_ticks = index+1==num_flows 
+        x_ticks = True
+        y_max = None
+        if para=='inflight' or para=='cwnd':
+            y_max = 250000
+        plot_metric(data, duration, para, y_max, 1, x_ticks)
+
+    for index, path in enumerate(rtt_paths):
+        para = 'rtt'
+        data = read_data(path, duration)
+        plt.subplot(2, 3, index+4)
+        # x_ticks = index+1==num_flows
+        x_ticks = True 
+        y_max = None
+        if para=='inflight' or para=='cwnd':
+            y_max = 250000
+        plot_metric(data, duration, para, y_max, 1, x_ticks)
+
+    (save_dir / 'figure').mkdir(exist_ok=True)
+    save_path = save_dir / 'figure' / f'{name}-all-flows.png'
+
+    # 保存
+    plt.savefig(str(save_path))
+
 # 複数の送信ノードのTCPの内部状態をプロットする関数．
 def plot_para(name, duration, num_flows, para, save_dir):
     paths = [save_dir / f'{name}-flw{i}-{para}.data' for i in range(num_flows)]
@@ -128,7 +162,10 @@ def plot_para(name, duration, num_flows, para, save_dir):
         data = read_data(path, duration)
         plt.subplot(4, 1, index+1)
         x_ticks = index+1==num_flows 
-        plot_metric(data, duration, para, None, 1, x_ticks)
+        y_max = None
+        if para=='inflight' or para=='cwnd':
+            y_max = 250000
+        plot_metric(data, duration, para, y_max, 1, x_ticks)
 
     (save_dir / 'figure').mkdir(exist_ok=True)
     save_path = save_dir / 'figure' / f'{name}-{para}-flows.png'

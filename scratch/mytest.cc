@@ -51,6 +51,7 @@
 #include "ns3/enum.h"
 #include "ns3/event-id.h"
 #include "ns3/flow-monitor-helper.h"
+#include "ns3/flow-monitor-module.h"
 #include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/traffic-control-module.h"
 
@@ -357,6 +358,8 @@ int main (int argc, char *argv[])
   double error_p = 0.001;
   std::string bandwidth = "1Mbps";
   std::string delay = "1ms";
+  std::string global_delay = "1ms";
+  bool delay_random = true;
   std::string access_bandwidth = "100Mbps";
   std::string access_delay = "10ms";
   bool udp_flag = true;
@@ -380,6 +383,8 @@ int main (int argc, char *argv[])
   cmd.AddValue ("error_p", "Packet error rate", error_p);
   cmd.AddValue ("bandwidth", "Bottleneck bandwidth", bandwidth);
   cmd.AddValue ("delay", "Bottleneck delay", delay);
+  cmd.AddValue ("global_delay", "global_delay", global_delay);
+  cmd.AddValue ("delay_random", "global_delay random flag", delay_random);
   cmd.AddValue ("access_bandwidth", "Access link bandwidth", access_bandwidth);
   cmd.AddValue ("udp_flag", "Enable Udp flow", udp_flag);
   cmd.AddValue ("udp_bandwidth", "Udp link bandwidth", udp_bandwidth);
@@ -479,11 +484,15 @@ int main (int argc, char *argv[])
   // globalのLinkの設定
   PointToPointHelper *LocalLinks;
   LocalLinks = new PointToPointHelper [num_flows];
+  uint16_t upper_delay;
+  upper_delay = std::stoi(global_delay.substr(0,global_delay.length()-2));
   for(int i = 0; i < num_flows; i++){
-    delay = std::to_string(uniformRv->GetInteger (1, 50)) + "ms";
-    LocalLinks[i] = GetP2PLink (access_bandwidth, delay, q_size);
-    writing_file << "flow" + std::to_string(i) + "_delay : " + delay << std::endl;
-    NS_LOG_INFO ("delay : " + delay);
+    if(delay_random){
+      global_delay = std::to_string(uniformRv->GetInteger (1, upper_delay)) + "ms";
+    }
+    LocalLinks[i] = GetP2PLink (access_bandwidth, global_delay, q_size);
+    writing_file << "flow" + std::to_string(i) + "_delay : " + global_delay << std::endl;
+    NS_LOG_INFO ("delay : " + global_delay);
   }
   writing_file.close();
 
@@ -668,16 +677,34 @@ int main (int argc, char *argv[])
 
   // Flow monitor
   FlowMonitorHelper flowHelper;
-  if (flow_monitor)
-    {
-      flowHelper.InstallAll ();
-    }
+  Ptr<FlowMonitor> monitor = flowHelper.InstallAll ();
+  // if (flow_monitor)
+  //   {
+  //     Ptr<FlowMonitor> monitor = flowHelper.InstallAll ();
+  //   }
 
   Simulator::Stop (Seconds (stop_time));
   Simulator::Run ();
 
   if (flow_monitor)
     {
+      std::ofstream writing_file;
+      std::string filename = prefix_file_name + "_flow_monitor.txt";
+      writing_file.open(filename);
+
+      monitor->CheckForLostPackets ();
+      Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowHelper.GetClassifier ());
+      FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
+      for(std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin(); i!=stats.end(); ++i){
+        Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+        writing_file << "Flow " << i->first  << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
+        writing_file << "  Tx Packets: " << i->second.txPackets << "\n";
+        writing_file << "  Rx Packets: " << i->second.rxPackets << "\n";
+        writing_file << "  lost Packets: " << i->second.lostPackets << "\n";
+      }
+
+      writing_file.close();
+
       flowHelper.SerializeToXmlFile (prefix_file_name + ".flowmonitor", true, true);
     }
 

@@ -25,11 +25,16 @@ def execute(filename, name, duration):
     setting = {}
     setting['duration'] = duration
     setting['prefix_name'] = str(save_path.relative_to(ROOT))
-    setting['error_p'] = 0.01
+    setting['error_p'] = 0.001
+    setting['delay_random'] = True
+    setting['global_delay'] = '50ms'
+    setting['access_bandwidth'] = '10Mbps'
     setting['bandwidth'] = '30Mbps'
-    setting['udp_flag'] = True
+    setting['udp_flag'] = False
     setting['udp_bandwidth'] = '10Mbps'
     setting['pcap_tracing'] = True
+    setting['q_size'] = 40
+    setting['flow_monitor'] = True
     sim_config.update(setting)
 
     sim_config.execute()
@@ -44,16 +49,19 @@ def analyze_pcap(name, duration,sack_option=True):
 
 def main():
     filename = 'mytest'
-    name = 'udp_2'
-    duration = 3
+    name = 'error_0001_4_range50'
+    duration = 30
     save_dir = ROOT / 'result' / name
 
     execute(filename=filename, name=name, duration=duration)
-    analyze_pcap(name,duration,True)
-    analyze_pcap(name,duration,False)
+
+    plot.plot_cwnd_rtt(name=name, duration=duration, num_flows=3, save_dir=save_dir)
     plot.plot_para(name=name, duration=duration, num_flows=3, para='cwnd', save_dir=save_dir)
+    plot.plot_para(name=name, duration=duration, num_flows=3, para='rtt', save_dir=save_dir)
     plot.plot_algorithm(name=name, duration=duration, flow=0)
 
+    # analyze_pcap(name,duration,True)
+    # analyze_pcap(name,duration,False)
 
 if __name__ == '__main__':
     main()
