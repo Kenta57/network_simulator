@@ -13,7 +13,6 @@ def main(path,save_dir):
     # size_frame = 4096 * 2 # フレームサイズ
     SR = 400		# サンプリングレート
     # size_shift = 16000 / 100 # シフトサイズ = 0.001 秒 (10 msec)
-    # x, _ = librosa.load(f'./audio/{filename}', sr=self.SR)
     rate = 1/SR
     # ハミング窓
     time = np.arange(0,duration,rate)
@@ -146,7 +145,10 @@ def compare(condition, save_dir_name):
         fft_spec = np.fft.rfft(x * hamming_window)
         ans = np.abs(fft_spec)
         # ans = np.log(np.abs(fft_spec))
-        plt.plot(ans[2:100],label=p.stem)
+        SR = 400
+        fq = np.linspace(0, SR, n)
+
+        plt.plot(ans[2:30], label=p.stem)
         plt.legend()
 
     base_path.mkdir(exist_ok=True)
@@ -210,4 +212,4 @@ if __name__ == '__main__':
     # save_dir_name = 'test'
     # compare_group(target_name, condition, save_dir_name)
 
-    compare(50,'test')
+    compare(10,'test')
