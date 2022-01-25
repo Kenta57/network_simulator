@@ -2,7 +2,9 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-
+from scipy.signal import find_peaks
+from astropy.timeseries import LombScargle
+import glob
 
 import plot
 
@@ -144,11 +146,25 @@ def compare(condition, save_dir_name):
         hamming_window = np.hamming(size_frame)
         fft_spec = np.fft.rfft(x * hamming_window)
         ans = np.abs(fft_spec)
+        ans = ans[2:100]
+        peaks,_ = find_peaks(ans,prominence=0.1)
+
+
+        peaks = peaks[np.argsort(ans[peaks])[::-1][:3]]
+        
+
+
         # ans = np.log(np.abs(fft_spec))
         SR = 400
         fq = np.linspace(0, SR, n)
+        fq = fq[2:100]
 
-        plt.plot(ans[2:30], label=p.stem)
+        # plt.plot(fq[2:100], ans[2:100]label=p.stem)
+        # plt.plot(fq, ans, label=p.stem)
+        plt.plot(ans, label=p.stem)
+        # plt.scatter(fq[peaks], ans[peaks],color='red')
+        plt.scatter(peaks, ans[peaks],color='red')
+
         plt.legend()
 
     base_path.mkdir(exist_ok=True)
@@ -166,13 +182,28 @@ def func(data, time, rate, pre_value):
         return pre_value
     else:
         return ans.mean()
-        
+
+
+def Lomb_Scargle(path):
+    data = plot.read_data(str(path), 30)
+    t = data['sec'].to_list()
+    rtt = data['value'].to_list()
+    frequency, power = LombScargle(t,rtt).autopower(maximum_frequency=5.0)
+    plt.plot(frequency, power)
+    plt.savefig(f'{path.stem}.png')
+    plt.clf()
+
+def check():
+    base_path = ROOT / 'result'
+    path_list = glob.glob(str(base_path / '*range50*'))
+    path_list = [Path(p) for p in path_list]
+    print(path_list)
+    # for p in path_list:
+    name = p.stem
+    target_path = p / f'{name}-flw0-rtt.data'
+    Lomb_Scargle(target_path)
 
 if __name__ == '__main__':
-    # name = 'error_0001_2_range10'
-    # path = ROOT / 'result' / name / (name+'-flw0-rtt.data')
-    # path_list = glob.glob(str(path/'*'))
-    # path_list = [Path(p) for p in path_list]
     
     l = [
         # 'error_0001_2_range10',
@@ -212,4 +243,6 @@ if __name__ == '__main__':
     # save_dir_name = 'test'
     # compare_group(target_name, condition, save_dir_name)
 
-    compare(10,'test')
+    # compare(10,'test')
+
+    check()

@@ -4,6 +4,9 @@ from sklearn.cluster import KMeans
 from pathlib import Path
 import glob
 from scipy.signal import find_peaks
+import matplotlib.pyplot as plt
+import plot
+from astropy.timeseries import LombScargle
 
 
 ROOT = Path.cwd().parent
@@ -17,10 +20,45 @@ def pre_process():
     p_l = path_list
     p_l = []
     for p in path_list:
-        # if not ('range50' in str(p)):
-        if 'range50' in str(p):
+        if not ('range50' in str(p)):
+        # if 'range50' in str(p):
             p_l.append(p)
-        
+
+    base_path = ROOT / 'result'
+
+    l = [
+        'error_0001_2_range10',
+        'error_0001_2_range50',
+        'error_0001_3_range10',
+        'error_0001_3_range50',
+        'error_0001_4_range10',
+        'error_0001_4_range50',
+        'gw_30_normal_2_range10',
+        'gw_30_normal_2_range50',
+        'gw_30_normal_3_range10',
+        'gw_30_normal_3_range50',
+        'gw_30_normal_4_range10',
+        'gw_30_normal_4_range50',
+        'normal_2',
+        'normal_2_range50',
+        'normal_3',
+        'normal_3_range50',
+        'normal_4',
+        'normal_4_range50',
+        'udp_2_range10',
+        'udp_2_range50',
+        'udp_3_range10',
+        'udp_3_range50',
+        'udp_4_range10',
+        'udp_4_range50'
+    ]
+
+    name_list = []
+    for name in l:
+        # if 'range50' in name:
+        if not('range50' in name):
+            name_list.append(name)
+    p_l = [base_path/name/f'{name}-flw{i}-rtt.data' for name in name_list for i in range(3)]
 
     name = [p.stem for p in p_l]
     print(name)
@@ -32,32 +70,19 @@ def pre_process():
     #     l = high_frq(p,r=20)
     #     data.append(l)
 
-    i = 0
     for p in p_l:
-        if i == 0:
-            l = high_frq(p,r=20)
-            i += 1
-        elif i == 1:
-            l += high_frq(p,r=20)
-            i += 1
-        else:
-            l += high_frq(p,r=20)
-            data.append(l)
-            i = 0
+        l = Lomb_Scargle(str(p))
+        data.append(l)
     
     
     data = np.array(data)
     df = pd.DataFrame(data=data)
-    name = [name[3*i] for i in range(len(name)//3)]
+    # name = [name[3*i] for i in range(len(name)//3)]
     df['name'] = name
     pred = KMeans(n_clusters=4).fit_predict(data)
     df['pred'] = pred
-    df = df.rename(columns={0: 'amplitude_flow0'})
-    df = df.rename(columns={1: 'frequency_flow0'})
-    df = df.rename(columns={2: 'amplitude_flow1'})
-    df = df.rename(columns={3: 'frequency_flow1'})
-    df = df.rename(columns={4: 'amplitude_flow2'})
-    df = df.rename(columns={5: 'frequency_flow2'})
+    df = df.rename(columns={0: 'amplitude'})
+    df = df.rename(columns={1: 'frequency'})
     print(df)
 
 def high_frq(path, r=20):
@@ -87,7 +112,41 @@ def high_frq(path, r=20):
 
     return l
 
+def Lomb_Scargle(path, save_dir=None):
+    data = plot.read_data(str(path), 30)
+    t = data['sec'].to_list()
+    rtt = data['value'].to_list()
+    frequency, power = LombScargle(t,rtt).autopower(maximum_frequency=5.0)
+    l = []
+    num = 1
+    # peaks,_ = find_peaks(power,prominence=0.1)
+    peaks,_ = find_peaks(power)
+    peaks = peaks[np.argsort(power[peaks])[::-1][:num]]
+    if len(peaks) != 0:
+        for i in range(num):
+            l.append(power[peaks[i]])
+            l.append(frequency[peaks[i]])
+        # plt.scatter(frequency[peaks], power[peaks], color='red')
+
+    # plt.plot(frequency, power)
+    # plt.savefig(str(save_dir / f'{path.stem}.png'))
+    # plt.clf()
+    return l
+
+def check():
+    base_path = ROOT / 'result'
+    save_dir = base_path / 'LS'
+    save_dir.mkdir(exist_ok=True)
+    path_list = glob.glob(str(base_path / '*range50*'))
+    path_list = [Path(p) for p in path_list]
+    print(path_list)
+    for p in path_list:
+        name = p.stem
+        target_path = p / f'{name}-flw0-rtt.data'
+        Lomb_Scargle(target_path, save_dir)
+
 
 
 if __name__ == '__main__':
     pre_process()
+    # check()
