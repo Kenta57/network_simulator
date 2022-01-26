@@ -27,24 +27,30 @@ def pre_process():
     base_path = ROOT / 'result'
 
     l = [
-        'error_0001_2_range10',
-        'error_0001_2_range50',
-        'error_0001_3_range10',
-        'error_0001_3_range50',
-        'error_0001_4_range10',
-        'error_0001_4_range50',
+        # 'error_0001_2_range10',
+        # 'error_0001_2_range50',
+        # 'error_0001_3_range10',
+        # 'error_0001_3_range50',
+        # 'error_0001_4_range10',
+        # 'error_0001_4_range50',
         'gw_30_normal_2_range10',
         'gw_30_normal_2_range50',
         'gw_30_normal_3_range10',
         'gw_30_normal_3_range50',
         'gw_30_normal_4_range10',
         'gw_30_normal_4_range50',
-        'normal_2',
-        'normal_2_range50',
-        'normal_3',
-        'normal_3_range50',
-        'normal_4',
-        'normal_4_range50',
+        # 'normal_2',
+        # 'normal_2_range50',
+        # 'normal_3',
+        # 'normal_3_range50',
+        # 'normal_4',
+        # 'normal_4_range50',
+        'TCP_Congestion_2_range10',
+        'TCP_Congestion_2_range50',
+        'TCP_Congestion_3_range10',
+        'TCP_Congestion_3_range50',
+        'TCP_Congestion_4_range10',
+        'TCP_Congestion_4_range50',
         'udp_2_range10',
         'udp_2_range50',
         'udp_3_range10',
@@ -53,11 +59,12 @@ def pre_process():
         'udp_4_range50'
     ]
 
+    category = 'range10'
     name_list = []
     for name in l:
-        # if 'range50' in name:
-        if not('range50' in name):
+        if category in name:
             name_list.append(name)
+
     p_l = [base_path/name/f'{name}-flw{i}-rtt.data' for name in name_list for i in range(3)]
 
     name = [p.stem for p in p_l]
@@ -79,7 +86,7 @@ def pre_process():
     df = pd.DataFrame(data=data)
     # name = [name[3*i] for i in range(len(name)//3)]
     df['name'] = name
-    pred = KMeans(n_clusters=4).fit_predict(data)
+    pred = KMeans(n_clusters=3).fit_predict(data)
     df['pred'] = pred
     df = df.rename(columns={0: 'amplitude'})
     df = df.rename(columns={1: 'frequency'})
@@ -118,7 +125,7 @@ def Lomb_Scargle(path, save_dir=None):
     rtt = data['value'].to_list()
     frequency, power = LombScargle(t,rtt).autopower(maximum_frequency=5.0)
     l = []
-    num = 1
+    num = 2
     # peaks,_ = find_peaks(power,prominence=0.1)
     peaks,_ = find_peaks(power)
     peaks = peaks[np.argsort(power[peaks])[::-1][:num]]

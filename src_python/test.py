@@ -25,7 +25,7 @@ def execute(filename, name, duration):
     setting = {}
     setting['duration'] = duration
     setting['prefix_name'] = str(save_path.relative_to(ROOT))
-    setting['error_p'] = 0.001
+    setting['error_p'] = 0.0
     setting['delay_random'] = True
     setting['global_delay'] = '50ms'
     setting['access_bandwidth'] = '10Mbps'
@@ -35,6 +35,7 @@ def execute(filename, name, duration):
     setting['pcap_tracing'] = True
     setting['q_size'] = 40
     setting['flow_monitor'] = True
+    setting['num_flows'] = 4
     sim_config.update(setting)
 
     sim_config.execute()
@@ -49,8 +50,8 @@ def analyze_pcap(name, duration,sack_option=True):
 
 def main():
     filename = 'mytest'
-    name = 'error_0001_4_range50'
-    duration = 30
+    name = 'TCP_Congestion_4_range10'
+    duration = 10
     save_dir = ROOT / 'result' / name
 
     execute(filename=filename, name=name, duration=duration)

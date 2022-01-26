@@ -198,10 +198,10 @@ def check():
     path_list = glob.glob(str(base_path / '*range50*'))
     path_list = [Path(p) for p in path_list]
     print(path_list)
-    # for p in path_list:
-    name = p.stem
-    target_path = p / f'{name}-flw0-rtt.data'
-    Lomb_Scargle(target_path)
+    for p in path_list:
+        name = p.stem
+        target_path = p / f'{name}-flw0-rtt.data'
+        Lomb_Scargle(target_path)
 
 if __name__ == '__main__':
     
@@ -246,3 +246,6 @@ if __name__ == '__main__':
     # compare(10,'test')
 
     check()
+
+    # path = ROOT / 'result' / 'TCP_Congestion_2_range50' / 'TCP_Congestion_2_range50-flw0-rtt.data'
+    # Lomb_Scargle(path)
