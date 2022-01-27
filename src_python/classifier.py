@@ -27,12 +27,12 @@ def pre_process():
     base_path = ROOT / 'result'
 
     l = [
-        # 'error_0001_2_range10',
-        # 'error_0001_2_range50',
-        # 'error_0001_3_range10',
-        # 'error_0001_3_range50',
-        # 'error_0001_4_range10',
-        # 'error_0001_4_range50',
+        'error_0001_2_range10',
+        'error_0001_2_range50',
+        'error_0001_3_range10',
+        'error_0001_3_range50',
+        'error_0001_4_range10',
+        'error_0001_4_range50',
         'gw_30_normal_2_range10',
         'gw_30_normal_2_range50',
         'gw_30_normal_3_range10',
@@ -88,8 +88,10 @@ def pre_process():
     df['name'] = name
     pred = KMeans(n_clusters=3).fit_predict(data)
     df['pred'] = pred
-    df = df.rename(columns={0: 'amplitude'})
-    df = df.rename(columns={1: 'frequency'})
+    df = df.rename(columns={0: 'amplitude_1'})
+    df = df.rename(columns={1: 'frequency_1'})
+    df = df.rename(columns={2: 'amplitude_2'})
+    df = df.rename(columns={3: 'frequency_2'})
     print(df)
 
 def high_frq(path, r=20):
@@ -123,9 +125,11 @@ def Lomb_Scargle(path, save_dir=None):
     data = plot.read_data(str(path), 30)
     t = data['sec'].to_list()
     rtt = data['value'].to_list()
+    n = len(t)
+    # frequency, power = LombScargle(t[int(n/6):],rtt[int(n/6):]).autopower(maximum_frequency=5.0)
     frequency, power = LombScargle(t,rtt).autopower(maximum_frequency=5.0)
     l = []
-    num = 2
+    num = 1
     # peaks,_ = find_peaks(power,prominence=0.1)
     peaks,_ = find_peaks(power)
     peaks = peaks[np.argsort(power[peaks])[::-1][:num]]
@@ -135,16 +139,20 @@ def Lomb_Scargle(path, save_dir=None):
             l.append(frequency[peaks[i]])
         # plt.scatter(frequency[peaks], power[peaks], color='red')
 
-    # plt.plot(frequency, power)
-    # plt.savefig(str(save_dir / f'{path.stem}.png'))
-    # plt.clf()
+    plt.title(str(path.parent.name)[:-10])
+    plt.xlabel('frequency[Hz]')
+    plt.ylabel('amplitude[s]')
+    plt.subplots_adjust(left=0.15, bottom=0.15)
+    plt.plot(frequency, power)
+    plt.savefig(str(save_dir / f'{path.stem}.png'))
+    plt.clf()
     return l
 
 def check():
     base_path = ROOT / 'result'
     save_dir = base_path / 'LS'
     save_dir.mkdir(exist_ok=True)
-    path_list = glob.glob(str(base_path / '*range50*'))
+    path_list = glob.glob(str(base_path / '*range10*'))
     path_list = [Path(p) for p in path_list]
     print(path_list)
     for p in path_list:
@@ -155,5 +163,5 @@ def check():
 
 
 if __name__ == '__main__':
-    pre_process()
-    # check()
+    # pre_process()
+    check()

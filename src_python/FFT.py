@@ -190,6 +190,7 @@ def Lomb_Scargle(path):
     rtt = data['value'].to_list()
     frequency, power = LombScargle(t,rtt).autopower(maximum_frequency=5.0)
     plt.plot(frequency, power)
+    path = ROOT / 'result' / 
     plt.savefig(f'{path.stem}.png')
     plt.clf()
 

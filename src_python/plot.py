@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from pathlib import Path
+import glob
+import pprint
 
 sns.set_style(style='ticks')
 plt.rcParams['font.size'] = 14
@@ -52,11 +54,12 @@ def plot_metric(
     # cは色でkは黒
     plt.step(
         metric.sec, metric.value/y_deno,
-        c='k', where='pre')
+        # c='k', 
+        where='pre')
     # x方向の表示範囲
     plt.xlim(0, x_max)
     # y軸のラベル名
-    plt.ylabel(y_label)
+    plt.ylabel(y_label+'[s]')
 
     # y軸の最大値．
     if y_max:
@@ -206,6 +209,58 @@ def plot_algorithm(name, duration, flow):
     # 保存
     plt.savefig(str(save_path/f'{name}-flw{flow}.png'))
 
+def plot_one(name, duration, flow_index, para, save_dir):
+    path = save_dir / f'{name}-flw{flow_index}-{para}.data' 
+
+    plt.title(name[:-10])
+    plt.subplots_adjust(left=0.2)
+    # for index, path in enumerate(paths):
+    metric = read_data(path, duration)
+    # plt.subplot(4, 1, index+1)
+    x_ticks = True
+    x_max = None
+    y_max = None
+    y_label = para
+    if para=='inflight' or para=='cwnd':
+        y_max = 250000
+
+    y_deno = 1
+    # 階段状にplotする
+    # where=preは左側にstepができる
+    # cは色でkは黒
+    plt.step(
+        metric.sec, metric.value/y_deno,
+        # c='k', 
+        where='pre')
+    # x方向の表示範囲
+    plt.xlim(0, x_max)
+    # y軸のラベル名
+    plt.ylabel(y_label.upper()+'[s]')
+
+    # y軸の最大値．
+    if y_max:
+        plt.ylim(0, y_max)
+
+    # x軸のメモリを表示するか否か．
+    if x_ticks:
+        plt.xlabel('time[s]')
+    else:
+        plt.xticks([])
+    
+    # plot_metric(data, duration, para, y_max, 1, x_ticks)
+
+    graph_dir = ROOT / 'result' / 'graph'
+    graph_dir.mkdir(exist_ok=True)
+    save_path = graph_dir / f'{name}-{para}-flow{flow_index}.png'
+
+    # (save_dir / 'figure').mkdir(exist_ok=True)
+    # save_path = save_dir / 'figure' / f'{name}-{para}-flow{flow_index}.png'
+
+    # 保存
+    plt.savefig(str(save_path))
+    plt.clf()
+
+
 def main():
     filename = 'mytest'
     name = 'test_3'
@@ -216,4 +271,49 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    # base_path = ROOT / 'result'
+    # path_list = glob.glob(str(base_path / '*range50*'))
+    # pprint.pprint(path_list)
+
+    base_path = ROOT / 'result'
+
+    l = [
+        'error_0001_2_range10',
+        'error_0001_2_range50',
+        'error_0001_3_range10',
+        'error_0001_3_range50',
+        'error_0001_4_range10',
+        'error_0001_4_range50',
+        'gw_30_normal_2_range10',
+        'gw_30_normal_2_range50',
+        'gw_30_normal_3_range10',
+        'gw_30_normal_3_range50',
+        'gw_30_normal_4_range10',
+        'gw_30_normal_4_range50',
+        'TCP_Congestion_2_range10',
+        'TCP_Congestion_2_range50',
+        'TCP_Congestion_3_range10',
+        'TCP_Congestion_3_range50',
+        'TCP_Congestion_4_range10',
+        'TCP_Congestion_4_range50',
+        'udp_2_range10',
+        'udp_2_range50',
+        'udp_3_range10',
+        'udp_3_range50',
+        'udp_4_range10',
+        'udp_4_range50'
+    ]
+    
+    category = '2_range50'
+    name_list = []
+    for name in l:
+        if category in name:
+            name_list.append(name)
+
+    p_l = [base_path/name for name in name_list]
+    for p in p_l:
+        save_dir = p
+        name = p.name
+        duration = 30
+        plot_one(name=name, duration=duration, flow_index=0, para='rtt', save_dir=save_dir)

@@ -30,12 +30,12 @@ def execute(filename, name, duration):
     setting['global_delay'] = '50ms'
     setting['access_bandwidth'] = '10Mbps'
     setting['bandwidth'] = '30Mbps'
-    setting['udp_flag'] = False
+    setting['udp_flag'] = True
     setting['udp_bandwidth'] = '10Mbps'
     setting['pcap_tracing'] = True
     setting['q_size'] = 40
     setting['flow_monitor'] = True
-    setting['num_flows'] = 4
+    setting['num_flows'] = 2
     sim_config.update(setting)
 
     sim_config.execute()
@@ -50,8 +50,8 @@ def analyze_pcap(name, duration,sack_option=True):
 
 def main():
     filename = 'mytest'
-    name = 'TCP_Congestion_4_range10'
-    duration = 10
+    name = 'TCP_UDP_2_range50'
+    duration = 30
     save_dir = ROOT / 'result' / name
 
     execute(filename=filename, name=name, duration=duration)
