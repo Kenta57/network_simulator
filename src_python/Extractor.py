@@ -10,15 +10,20 @@ class Extractor:
         self.prefix = prefix
         self.save_dir = target_path.parent
         self.sack_option = sack_option
-        self.save_paths = [self.save_dir / f'{target_path.parent.name}-sack-{self.sack_option}-flw{i}-{self.prefix}.data' for i in range(3)]
+        self.save_paths = [self.save_dir / f'{self.save_dir.name}-sack-{self.sack_option}-flw{i}-{self.prefix}.data' for i in range(3)]
+        for p in self.save_paths:
+            p.unlink(missing_ok=True)
 
         self.clean_file()
 
         self.f_streams = [open(str(path), mode='a') for path in self.save_paths]
         self.highest_ack = [0]*3
         self.inflight = [0]*3
+        self.DUP_ACK_cnt = [0]*3
+        self.ACK = [0]*3
 
     def __del__(self):
+        self.output_DUP_ACK()
         for f in self.f_streams:
             f.close()
 
@@ -27,14 +32,26 @@ class Extractor:
             p.unlink(missing_ok=True)
             p.touch(exist_ok=True)
 
-    def extract_inflight(self):
+    def extract(self):
         for i, packet in tqdm(enumerate(self.cap)):
             transport_layer = packet.transport_layer
             if transport_layer == 'TCP':
                 stream_idx = int(packet.tcp.stream)
-                self.get_inflight(packet, stream_idx, i+1)
+                if stream_idx > 2:
+                    continue
+                self.get_inflight(packet, stream_idx)
+                self.count_DUP_ACK(packet, stream_idx)
 
-    def get_inflight(self, packet, stream_idx, index):
+    def count_DUP_ACK(self, packet, stream_idx):
+        ack = int(packet.tcp.ack)
+        seq = int(packet.tcp.seq)
+        if seq == 1 and not(ack == 1):
+            if ack == self.ACK[stream_idx]:
+                self.DUP_ACK_cnt[stream_idx] += 1
+            else:
+                self.ACK[stream_idx] = ack
+
+    def get_inflight(self, packet, stream_idx):
         seq = int(packet.tcp.seq)
         ack = int(packet.tcp.ack)
         nxt_seq = int(packet.tcp.nxtseq)
@@ -53,7 +70,7 @@ class Extractor:
             __inflight = highest_nxt_seq - self.highest_ack[stream_idx]
             self.inflight[stream_idx] = __inflight if __inflight > 0 else self.inflight[stream_idx]
             time = packet.sniff_timestamp
-            self.f_streams[stream_idx].write(f'{index} {time} {self.inflight[stream_idx]}\n')
+            self.f_streams[stream_idx].write(f'{time} {self.inflight[stream_idx]}\n')
 
     def get_virtual_ack(self, byte_raw, ack):
         sack = self.get_sack_list(byte_raw)
@@ -74,6 +91,13 @@ class Extractor:
         for i in range(sack_cnt)[::-1]:
             sack += __sack[2*i:2*i+2]
         return sack
+
+    def output_DUP_ACK(self):
+        save_path = self.save_dir / f'{self.save_dir.name}-DUP_ACK_num.data'
+        with open(str(save_path), mode='w') as f:
+            for i, v in enumerate(self.DUP_ACK_cnt):
+                f.write(f'{i} {v}\n')
+
 
 if __name__ == '__main__':
     target_path = ROOT / 'result' / 'udp_100Mbps' / 'udp_100Mbps-1-1.pcap'

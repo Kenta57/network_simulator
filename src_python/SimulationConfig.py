@@ -2,6 +2,8 @@ import configparser
 from typing import Dict, Tuple, Union, Any
 import subprocess
 from pathlib import Path
+import glob
+import json
 
 
 ROOT = Path.cwd().parent
@@ -41,6 +43,10 @@ class SimulationConfig:
         for key, value in setting.items():
             if key in self.parameters.keys():
                 self.parameters[key]=value
+    
+    def update_json(self, json_path):
+        with open(str(save_path)) as f:
+            self.parameters = json.load(f)
 
     # コマンドライン引数を追加したコマンドを作成する関数
     def make_command(self):
@@ -64,9 +70,19 @@ class SimulationConfig:
 
     def __setting_save(self):
         save_path = ROOT / (self.parameters['prefix_name'] + '_setting.txt')
+        json_path = ROOT / (self.parameters['prefix_name'] + '_setting.json')
+        with open(str(json_path), 'w') as f:
+            json.dump(self.parameters, f, indent=4)
         with open(str(save_path), mode='a') as f:
             for key, value in self.parameters.items():
                 f.write(f'{key} : {value}\n')
+
+    def delete_pcap(self):
+        base_path = (ROOT / self.parameters['prefix_name']).parent
+        target_paths = [Path(p).unlink() for p in glob.glob(str(base_path / '*.pcap')) if '-1-1' not in p]
+
+    
+
 
 if __name__=='__main__':
     filename = 'mytest'

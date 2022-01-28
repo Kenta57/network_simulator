@@ -7,78 +7,30 @@ from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import plot
 from astropy.timeseries import LombScargle
+import pprint
 
-
+pd.set_option('display.max_rows', 150)
 ROOT = Path.cwd().parent
 
 def pre_process():
-    base_path = ROOT / 'result' / 'test'
-    l = glob.glob(str(base_path/'*.npy'))
-    path_list = [Path(p) for p in l]
-    path_list.sort()
-    # path_list = path_list[18:]
-    p_l = path_list
-    p_l = []
-    for p in path_list:
-        if not ('range50' in str(p)):
-        # if 'range50' in str(p):
-            p_l.append(p)
+    base_path = ROOT / 'data'
+    category = 'range50'
+    name_list = [Path(p).name for p in glob.glob(str(base_path/f'*{category}*'))]
+    name_list.sort()
 
-    base_path = ROOT / 'result'
+    path_list = [base_path/name/f'{name}-flw{i}-rtt.data' for name in name_list for i in range(3)]
 
-    l = [
-        'error_0001_2_range10',
-        'error_0001_2_range50',
-        'error_0001_3_range10',
-        'error_0001_3_range50',
-        'error_0001_4_range10',
-        'error_0001_4_range50',
-        'gw_30_normal_2_range10',
-        'gw_30_normal_2_range50',
-        'gw_30_normal_3_range10',
-        'gw_30_normal_3_range50',
-        'gw_30_normal_4_range10',
-        'gw_30_normal_4_range50',
-        # 'normal_2',
-        # 'normal_2_range50',
-        # 'normal_3',
-        # 'normal_3_range50',
-        # 'normal_4',
-        # 'normal_4_range50',
-        'TCP_Congestion_2_range10',
-        'TCP_Congestion_2_range50',
-        'TCP_Congestion_3_range10',
-        'TCP_Congestion_3_range50',
-        'TCP_Congestion_4_range10',
-        'TCP_Congestion_4_range50',
-        'udp_2_range10',
-        'udp_2_range50',
-        'udp_3_range10',
-        'udp_3_range50',
-        'udp_4_range10',
-        'udp_4_range50'
-    ]
-
-    category = 'range10'
-    name_list = []
-    for name in l:
-        if category in name:
-            name_list.append(name)
-
-    p_l = [base_path/name/f'{name}-flw{i}-rtt.data' for name in name_list for i in range(3)]
-
-    name = [p.stem for p in p_l]
-    print(name)
-
+    name = [p.stem for p in path_list]
 
     data = []
-
-    # for p in p_l:
-    #     l = high_frq(p,r=20)
-    #     data.append(l)
-
-    for p in p_l:
+    
+    i = 0
+    # for p, p_dup in zip(p_l, DUP_l):
+    for p in path_list:
         l = Lomb_Scargle(str(p))
+        # l += DUP_ACK(str(p_dup), i)
+        i += 1
+        i %= 3
         data.append(l)
     
     
@@ -86,7 +38,7 @@ def pre_process():
     df = pd.DataFrame(data=data)
     # name = [name[3*i] for i in range(len(name)//3)]
     df['name'] = name
-    pred = KMeans(n_clusters=3).fit_predict(data)
+    pred = KMeans(n_clusters=4).fit_predict(data)
     df['pred'] = pred
     df = df.rename(columns={0: 'amplitude_1'})
     df = df.rename(columns={1: 'frequency_1'})
@@ -94,32 +46,32 @@ def pre_process():
     df = df.rename(columns={3: 'frequency_2'})
     print(df)
 
-def high_frq(path, r=20):
-    data = np.load(str(path))
-    size_frame = len(data)
-    hamming_window = np.hamming(size_frame)
-    fft_spec = np.fft.rfft(data * hamming_window)
-    ans = np.abs(fft_spec)
-    ans = ans[2:]
+# def high_frq(path, r=20):
+#     data = np.load(str(path))
+#     size_frame = len(data)
+#     hamming_window = np.hamming(size_frame)
+#     fft_spec = np.fft.rfft(data * hamming_window)
+#     ans = np.abs(fft_spec)
+#     ans = ans[2:]
 
-    # 区間ごとの最大値をとってくる
-    # n = len(ans)
-    # l = []
-    # for i in range(3):
-    #     l.append(np.max(ans[i:i+r]))
-
-
-    l = []
-    num = 1
-    peaks,_ = find_peaks(ans,prominence=0.1)
-    peaks = peaks[np.argsort(ans[peaks])[::-1][:num]]
-    for i in range(num):
-        l.append(ans[peaks[i]])
-        l.append(peaks[i])
+#     # 区間ごとの最大値をとってくる
+#     # n = len(ans)
+#     # l = []
+#     # for i in range(3):
+#     #     l.append(np.max(ans[i:i+r]))
 
 
+#     l = []
+#     num = 1
+#     peaks,_ = find_peaks(ans,prominence=0.1)
+#     peaks = peaks[np.argsort(ans[peaks])[::-1][:num]]
+#     for i in range(num):
+#         l.append(ans[peaks[i]])
+#         l.append(peaks[i])
 
-    return l
+
+
+#     return l
 
 def Lomb_Scargle(path, save_dir=None):
     data = plot.read_data(str(path), 30)
@@ -139,14 +91,24 @@ def Lomb_Scargle(path, save_dir=None):
             l.append(frequency[peaks[i]])
         # plt.scatter(frequency[peaks], power[peaks], color='red')
 
-    plt.title(str(path.parent.name)[:-10])
-    plt.xlabel('frequency[Hz]')
-    plt.ylabel('amplitude[s]')
-    plt.subplots_adjust(left=0.15, bottom=0.15)
-    plt.plot(frequency, power)
-    plt.savefig(str(save_dir / f'{path.stem}.png'))
-    plt.clf()
+    # plt.title(str(path.parent.name)[:-10])
+    # plt.xlabel('frequency[Hz]')
+    # plt.ylabel('amplitude[s]')
+    # plt.subplots_adjust(left=0.15, bottom=0.15)
+    # plt.plot(frequency, power)
+    # plt.savefig(str(save_dir / f'{path.stem}.png'))
+    # plt.clf()
     return l
+
+def DUP_ACK(path, stream_idx):
+    with open(str(path)) as f:
+        l_strip = [s.strip() for s in f.readlines()]
+        l = [elm.split()[1] for elm in l_strip]
+    sum = 0
+    for i in range(3):
+        sum += int(l[i])
+    # return [int(l[stream_idx])]
+    return [sum]
 
 def check():
     base_path = ROOT / 'result'
@@ -163,5 +125,5 @@ def check():
 
 
 if __name__ == '__main__':
-    # pre_process()
-    check()
+    pre_process()
+    # check()
