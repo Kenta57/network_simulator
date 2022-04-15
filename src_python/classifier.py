@@ -14,7 +14,7 @@ ROOT = Path.cwd().parent
 
 def pre_process():
     base_path = ROOT / 'data'
-    category = 'range50'
+    category = 'range10'
     name_list = [Path(p).name for p in glob.glob(str(base_path/f'*{category}*'))]
     name_list.sort()
 
@@ -77,11 +77,26 @@ def Lomb_Scargle(path, save_dir=None):
     data = plot.read_data(str(path), 30)
     t = data['sec'].to_list()
     rtt = data['value'].to_list()
+
+    # plt.title(str(path.parent.name)[:-10])
+    # plt.title(str(path.parent.name)[:-7])
+    plt.xlabel('time[s]')
+    plt.ylabel('RTT[s]')
+    plt.subplots_adjust(left=0.15, bottom=0.15)
+    plt.plot(t, rtt)
+
+    save_dir = save_dir / path.stem
+    save_dir.mkdir(exist_ok=True)
+    plt.savefig(str(save_dir / f'RTT_{path.stem}.png'))
+    plt.clf()
+
     n = len(t)
+
+
     # frequency, power = LombScargle(t[int(n/6):],rtt[int(n/6):]).autopower(maximum_frequency=5.0)
     frequency, power = LombScargle(t,rtt).autopower(maximum_frequency=5.0)
     l = []
-    num = 1
+    num = 3
     # peaks,_ = find_peaks(power,prominence=0.1)
     peaks,_ = find_peaks(power)
     peaks = peaks[np.argsort(power[peaks])[::-1][:num]]
@@ -89,15 +104,17 @@ def Lomb_Scargle(path, save_dir=None):
         for i in range(num):
             l.append(power[peaks[i]])
             l.append(frequency[peaks[i]])
-        # plt.scatter(frequency[peaks], power[peaks], color='red')
+        plt.scatter(frequency[peaks], power[peaks], color='red')
 
     # plt.title(str(path.parent.name)[:-10])
-    # plt.xlabel('frequency[Hz]')
-    # plt.ylabel('amplitude[s]')
-    # plt.subplots_adjust(left=0.15, bottom=0.15)
-    # plt.plot(frequency, power)
-    # plt.savefig(str(save_dir / f'{path.stem}.png'))
-    # plt.clf()
+    # plt.title(str(path.parent.name)[:-7])
+    plt.xlabel('frequency[Hz]')
+    plt.ylabel('amplitude[s]')
+    plt.subplots_adjust(left=0.15, bottom=0.15)
+    plt.plot(frequency, power)
+
+    plt.savefig(str(save_dir / f'Lomb_{path.stem}.png'))
+    plt.clf()
     return l
 
 def DUP_ACK(path, stream_idx):
@@ -111,19 +128,24 @@ def DUP_ACK(path, stream_idx):
     return [sum]
 
 def check():
-    base_path = ROOT / 'result'
-    save_dir = base_path / 'LS'
+    base_path = ROOT / 'data'
+    # save_dir = base_path / 'LS'
+    save_dir = base_path / 'LS_data'
     save_dir.mkdir(exist_ok=True)
-    path_list = glob.glob(str(base_path / '*range10*'))
+    path_list = glob.glob(str(base_path / '*test*'))
     path_list = [Path(p) for p in path_list]
+    path_list.sort()
     print(path_list)
     for p in path_list:
         name = p.stem
-        target_path = p / f'{name}-flw0-rtt.data'
-        Lomb_Scargle(target_path, save_dir)
+        # target_path = p / f'{name}-flw0-rtt.data'
+        target_path_list = [p / f'{name}-flw{i}-rtt.data' for i in range(3)]
+        for target_path in target_path_list:
+            Lomb_Scargle(target_path, save_dir)
+        # break
 
 
 
 if __name__ == '__main__':
-    pre_process()
-    # check()
+    # pre_process()
+    check()

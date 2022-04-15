@@ -486,9 +486,11 @@ int main (int argc, char *argv[])
   LocalLinks = new PointToPointHelper [num_flows];
   uint16_t upper_delay;
   upper_delay = std::stoi(global_delay.substr(0,global_delay.length()-2));
+  int delay_array[4] = {1,5,25,50};
   for(int i = 0; i < num_flows; i++){
     if(delay_random){
       global_delay = std::to_string(uniformRv->GetInteger (1, upper_delay)) + "ms";
+      global_delay = std::to_string(delay_array[i]) + "ms";
     }
     LocalLinks[i] = GetP2PLink (access_bandwidth, global_delay, q_size);
     writing_file << "flow" + std::to_string(i) + "_delay : " + global_delay << std::endl;
@@ -699,7 +701,9 @@ int main (int argc, char *argv[])
         Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
         writing_file << "Flow " << i->first  << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
         writing_file << "  Tx Packets: " << i->second.txPackets << "\n";
+        writing_file << "  Tx Bytes: " << i->second.txBytes << "\n";
         writing_file << "  Rx Packets: " << i->second.rxPackets << "\n";
+        writing_file << "  Rx Bytes: " << i->second.rxBytes << "\n";
         writing_file << "  lost Packets: " << i->second.lostPackets << "\n";
       }
 
