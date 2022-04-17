@@ -99,40 +99,72 @@ class Extractor:
             for i, v in enumerate(self.DUP_ACK_cnt):
                 f.write(f'{i} {v}\n')
 
-def isACK(segment):
-    seq = int(segment.seq)
-    ack = int(segment.ack)
-    return seq == 1 and ack != 1
+class rtt_estimator:
+    def __init__(self, target_path):
+        self.alpha = 0.125
+        # self.beta =0.25
+        self.estimatedRtt = None
+        self.samplingRtt = None
+        self.cap = pyshark.FileCapture(str(target_path))
 
-def test():
-    ack_queue = deque()
-    TSval = None
-    for packet in self.cap:
+    def isACK(self, segment):
+        seq = int(segment.seq)
+        ack = int(segment.ack)
+        return seq == 1 and ack != 1
+
+    def test(self):
+        ack_queue = deque()
+        TSval = None
+        for index, packet in enumerate(self.cap):
             transport_layer = packet.transport_layer
             if transport_layer == 'TCP':
-                segment = packet.tcp
-                stream_idx = int(segment.stream)
-                if stream_idx > 2:
+                # segment = packet.tcp
+                stream_idx = int(packet.tcp.stream)
+                if stream_idx != 0:
                     continue
 
-                if isACK(segment):
-                    ack_queue.append(segment)
-                else:
-                    if TSval is not None and segment.options_timestamp_tsecr == TSval:
+                if self.isACK(packet.tcp):
+                    ack_queue.append(packet)
+                elif len(ack_queue) != 0:
+                    if TSval is not None and packet.tcp.options_timestamp_tsecr == TSval:
                         continue
                     else:
+                        TSval = ack_queue[0].tcp.options_timestamp_tsval
+                        self.rtt_sampling(ack_queue[0], packet, index)
+                        self.rtt_estimate()
                         ack_queue.popleft()
-                        TSval = d[0].options_timestamp_tsval
                         # TODO: RTT_sampling
+
+    def rtt_sampling(self, packet_TSval, packet_TSecr, index):
+        self.samplingRtt = float(packet_TSecr.sniff_timestamp) - float(packet_TSval.sniff_timestamp) 
+        # print(f'TSval : {packet_TSval.tcp.options_timestamp_tsval}')
+        # print(f'TSecr : {packet_TSecr.tcp.options_timestamp_tsecr}')
+        print(f'rtt_s : {self.samplingRtt}, index : {index}')
+        return self.samplingRtt
+
+    def rtt_estimate(self):
+        if self.estimatedRtt is None:
+            self.estimatedRtt = self.samplingRtt
+        else:
+            self.estimatedRtt += (self.samplingRtt - self.estimatedRtt) * self.alpha
+        print(f'rtt_e : {self.estimatedRtt}')
+        return self.estimatedRtt
+
                 
 
 
 
 if __name__ == '__main__':
-    target_path = ROOT / 'result' / 'udp_100Mbps' / 'udp_100Mbps-1-1.pcap'
-    Ex = Extractor(target_path)
-    Ex.extract_inflight()
-    del Ex
+    # target_path = ROOT / 'result' / 'udp_100Mbps' / 'udp_100Mbps-1-1.pcap'
+    # Ex = Extractor(target_path)
+    # Ex.extract_inflight()
+    # del Ex
+
+    target_path = Path('/home/murayama/Document/ns3/ns-3-allinone/ns-3.30/data/Normal_0_range10/Normal_0_range10-1-1.pcap')
+    # cap = pyshark.FileCapture(str(target_path))
+    # test(cap)
+    r_estimator = rtt_estimator(target_path)
+    r_estimator.test()
 
 
 
