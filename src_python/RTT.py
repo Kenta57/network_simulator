@@ -134,18 +134,19 @@ def plot_old_new_rtt():
 
     # p_l = [base_path/name for name in name_list]
     old_rtt_list = []
-    flow_index = 0
     para = 'rtt'
     duration = 30
+
     for name in name_list:
-        plt.figure(figsize=(12, 12))
-        plt.title(name)
-        p = base_path / name / f'{name}-flw{flow_index}-{para}.data' 
-        __plot_old_new_rtt(p, 1, duration, para)
-        p = base_path / name / f'{name}-flw{flow_index}-{para}_sampling.data' 
-        __plot_old_new_rtt(p, 2, duration, para)
-        p = base_path / name / f'{name}-flw{flow_index}-{para}_estimate.data' 
-        __plot_old_new_rtt(p, 3, duration, para)
+        plt.figure(figsize=(10*3, 20))
+        for flow_index in range(3):
+            # plt.title(name)
+            p = base_path / name / f'{name}-flw{flow_index}-{para}.data' 
+            __plot_old_new_rtt(p, 1 + flow_index, duration, para)
+            p = base_path / name / f'{name}-flw{flow_index}-{para}_sampling.data' 
+            __plot_old_new_rtt(p, 4 + flow_index, duration, para)
+            p = base_path / name / f'{name}-flw{flow_index}-{para}_estimate.data' 
+            __plot_old_new_rtt(p, 7 + flow_index, duration, para)
         
         # old_rtt_list.append(p)
         # data = plot.read_data(file_name = str(p), duration = duration)
@@ -166,8 +167,9 @@ def plot_old_new_rtt():
 
 def __plot_old_new_rtt(path, plt_index, duration, para):
     data = plot.read_data(file_name = str(path), duration = duration)
-    plt.subplot(3, 1, plt_index)
+    plt.subplot(3, 3, plt_index)
     plot.plot_metric(data, duration, para, None, 1, True)
+    plt.title(path.stem[22:])
 
                 
 
