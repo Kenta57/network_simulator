@@ -168,18 +168,17 @@ if __name__ == '__main__':
     path_list = [Path(p).name for p in glob.glob(str(base_path / '*'))]
     path_list.sort()
 
-    category = '0_range10'
-    NG_list = ['range100', 'UDP', '00']
+    category = 'range50'
+    NG_list = ['UDP']
     name_list = spot_list(path_list, category, NG_list)
 
     pprint.pprint(name_list)
 
-    # for name in name_list:
-    #     print(name)
-    #     main(base_path/name)
+    for name in tqdm(name_list):
+        print(name)
+        main(base_path/name)
 
-
-    # plot_old_new_rtt(name_list)
+    plot_old_new_rtt(name_list)
 
 
 
