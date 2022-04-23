@@ -25,6 +25,10 @@ class rtt_estimator:
 
         self.stream_sampling = open(str(save_path_sampling), mode='a')
         self.stream_estimate = open(str(save_path_estimate), mode='a')
+    
+    def __del__(self):
+        self.stream_sampling.close()
+        self.stream_estimate.close()
 
     def isACK(self, segment):
         seq = int(segment.seq)
@@ -59,8 +63,8 @@ class rtt_estimator:
         self.stream_estimate.write(f'{self.time} {self.estimatedRtt}\n')
         return self.estimatedRtt
 
-def main():
-    target_dir = Path('/home/murayama/Document/ns3/ns-3-allinone/ns-3.30/data/Normal_0_range10')
+def main(target_dir):
+    # target_dir = Path('/home/murayama/Document/ns3/ns-3-allinone/ns-3.30/data/Normal_0_range10')
     r_estimators = [rtt_estimator(target_dir, index) for index in range(3)]
     prefix = target_dir.name
     target_path = target_dir / f'{prefix}-1-1.pcap'
@@ -70,7 +74,12 @@ def main():
         transport_layer = packet.transport_layer
         if transport_layer == 'TCP':
             stream_idx = int(packet.tcp.stream)
+            if stream_idx > 2:
+                    continue
             r_estimators[stream_idx].push(packet)
+    
+    for r_e in r_estimators:
+        del r_e
 
 def plot_rtt(target_path):
     metric = plot.read_data(file_name = target_path, duration = 30)
@@ -114,49 +123,35 @@ def plot_rtt(target_path):
     plt.savefig(str(save_path))
     plt.clf()
 
-def plot_old_new_rtt():
+def plot_old_new_rtt(name_list):
     base_path = ROOT / 'data'
-    path_list = [Path(p).name for p in glob.glob(str(base_path / '*'))]
-    path_list.sort()
-    # pprint.pprint(path_list)
+    # path_list = [Path(p).name for p in glob.glob(str(base_path / '*'))]
+    # path_list.sort()
 
-    # base_path = ROOT / 'result'
-
-    name_list = ['Normal_0_range10']
-
-    # category = 'Normal_0_range10'
+    # category = '0_range50'
     # name_list = []
     # for name in path_list:
     #     if category in name:
     #         name_list.append(name)
-    
-    print(name_list)
 
-    # p_l = [base_path/name for name in name_list]
-    old_rtt_list = []
+    
     para = 'rtt'
     duration = 30
 
     for name in name_list:
         plt.figure(figsize=(10*3, 20))
+        plt.suptitle(name, fontsize=50)
         for flow_index in range(3):
-            # plt.title(name)
             p = base_path / name / f'{name}-flw{flow_index}-{para}.data' 
             __plot_old_new_rtt(p, 1 + flow_index, duration, para)
             p = base_path / name / f'{name}-flw{flow_index}-{para}_sampling.data' 
             __plot_old_new_rtt(p, 4 + flow_index, duration, para)
             p = base_path / name / f'{name}-flw{flow_index}-{para}_estimate.data' 
             __plot_old_new_rtt(p, 7 + flow_index, duration, para)
-        
-        # old_rtt_list.append(p)
-        # data = plot.read_data(file_name = str(p), duration = duration)
-        # plt.subplot(3, 1, 1)
-        # plot.plot_metric(data, duration, para, None, 1, True)
 
-        
-
-    save_path = ROOT / 'src_python' / 'test.png'
-    plt.savefig(str(save_path))
+        save_path = ROOT / 'data' / name / 'figure' / f'{name}-rtt_estimate.png'
+        plt.savefig(str(save_path))
+        plt.clf()
     # print(old_rtt_list[0].exists())
 
     # for p in p_l:
@@ -169,20 +164,37 @@ def __plot_old_new_rtt(path, plt_index, duration, para):
     data = plot.read_data(file_name = str(path), duration = duration)
     plt.subplot(3, 3, plt_index)
     plot.plot_metric(data, duration, para, None, 1, True)
-    plt.title(path.stem[22:])
+    plt.title(path.stem[len(path.parent.stem)+6:])
 
                 
 
 if __name__ == '__main__':
-    # target_dir = Path('/home/murayama/Document/ns3/ns-3-allinone/ns-3.30/data/Normal_0_range10')
-    # r_estimator = rtt_estimator(target_dir)
-    # r_estimator.test()
+    base_path = ROOT / 'data'
+    path_list = [Path(p).name for p in glob.glob(str(base_path / '*'))]
+    path_list.sort()
+    # pprint.pprint(path_list)
 
-    # path_list = [save_path / 'rtt_sampling.data', save_path / 'rtt_estimate.data']
-    # for p in path_list:
-    #     plot_rtt(p)
-    plot_old_new_rtt()
-    # main()
+    category = '0_range10'
+    NG = ['range100', 'UDP', '00']
+    flag = True
+    name_list = []
+    for name in path_list:
+        if category in name:
+            for word in NG:
+                if word in name:
+                    flag = False
+            if flag:
+                name_list.append(name)
+            flag = True
+
+    pprint.pprint(name_list)
+
+    for name in name_list:
+        print(name)
+        main(base_path/name)
+
+
+    plot_old_new_rtt(name_list)
 
 
 
