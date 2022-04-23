@@ -1,0 +1,11 @@
+accuracy0 : 1.0
+accuracy1 : 1.0
+accuracy2 : 0.9629629629629629
+accuracy3 : 1.0
+accuracy4 : 1.0
+accuracy5 : 0.9629629629629629
+accuracy6 : 1.0
+accuracy7 : 0.9629629629629629
+accuracy8 : 0.9629629629629629
+accuracy9 : 1.0
+average_accuracy : 0.9851851851851852

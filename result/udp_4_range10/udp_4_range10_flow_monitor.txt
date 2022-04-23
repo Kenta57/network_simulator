@@ -1,0 +1,28 @@
+Flow 1 (10.0.1.1 -> 10.0.3.2)
+  Tx Packets: 16971
+  Rx Packets: 16937
+  lost Packets: 26
+Flow 2 (10.0.3.2 -> 10.0.1.1)
+  Tx Packets: 8897
+  Rx Packets: 8887
+  lost Packets: 0
+Flow 3 (10.0.4.1 -> 10.0.5.2)
+  Tx Packets: 17577
+  Rx Packets: 17532
+  lost Packets: 23
+Flow 4 (10.0.8.1 -> 10.0.9.2)
+  Tx Packets: 37499
+  Rx Packets: 33432
+  lost Packets: 3917
+Flow 5 (10.0.5.2 -> 10.0.4.1)
+  Tx Packets: 9177
+  Rx Packets: 9173
+  lost Packets: 0
+Flow 6 (10.0.6.1 -> 10.0.7.2)
+  Tx Packets: 17550
+  Rx Packets: 17516
+  lost Packets: 20
+Flow 7 (10.0.7.2 -> 10.0.6.1)
+  Tx Packets: 9131
+  Rx Packets: 9128
+  lost Packets: 0

@@ -1,0 +1,36 @@
+Flow 1 (10.0.1.1 -> 10.0.3.2)
+  Tx Packets: 22422
+  Tx Bytes: 33450748
+  Rx Packets: 22332
+  Rx Bytes: 33316468
+  lost Packets: 7
+Flow 2 (10.0.3.2 -> 10.0.1.1)
+  Tx Packets: 11446
+  Tx Bytes: 603308
+  Rx Packets: 11417
+  Rx Bytes: 601800
+  lost Packets: 0
+Flow 3 (10.0.4.1 -> 10.0.5.2)
+  Tx Packets: 24708
+  Tx Bytes: 36861460
+  Rx Packets: 24656
+  Rx Bytes: 36783876
+  lost Packets: 8
+Flow 4 (10.0.5.2 -> 10.0.4.1)
+  Tx Packets: 12649
+  Tx Bytes: 664280
+  Rx Packets: 12638
+  Rx Bytes: 663708
+  lost Packets: 0
+Flow 5 (10.0.6.1 -> 10.0.7.2)
+  Tx Packets: 23090
+  Tx Bytes: 34447404
+  Rx Packets: 22986
+  Rx Bytes: 34292236
+  lost Packets: 7
+Flow 6 (10.0.7.2 -> 10.0.6.1)
+  Tx Packets: 11757
+  Tx Bytes: 619032
+  Rx Packets: 11733
+  Rx Bytes: 617784
+  lost Packets: 0

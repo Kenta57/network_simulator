@@ -1,0 +1,2 @@
+accuracy0 : 1.0
+average_accuracy : 1.0

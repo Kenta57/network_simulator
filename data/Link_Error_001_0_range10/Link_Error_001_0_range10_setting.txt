@@ -1,0 +1,3 @@
+flow0_delay : 5ms
+flow1_delay : 4ms
+flow2_delay : 3ms
