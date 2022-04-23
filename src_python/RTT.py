@@ -149,8 +149,6 @@ def __plot_old_new_rtt(path, plt_index, duration, para):
     plt.title(path.stem[len(path.parent.stem)+6:])
 
 def spot_list(target_list, OK_word, NG_list):
-    category = '0_range10'
-    NG = ['range100', 'UDP', '00']
     flag = True
     name_list = []
     for name in target_list:
