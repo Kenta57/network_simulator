@@ -64,7 +64,6 @@ class rtt_estimator:
         return self.estimatedRtt
 
 def main(target_dir):
-    # target_dir = Path('/home/murayama/Document/ns3/ns-3-allinone/ns-3.30/data/Normal_0_range10')
     r_estimators = [rtt_estimator(target_dir, index) for index in range(3)]
     prefix = target_dir.name
     target_path = target_dir / f'{prefix}-1-1.pcap'
@@ -125,16 +124,6 @@ def plot_rtt(target_path):
 
 def plot_old_new_rtt(name_list):
     base_path = ROOT / 'data'
-    # path_list = [Path(p).name for p in glob.glob(str(base_path / '*'))]
-    # path_list.sort()
-
-    # category = '0_range50'
-    # name_list = []
-    # for name in path_list:
-    #     if category in name:
-    #         name_list.append(name)
-
-    
     para = 'rtt'
     duration = 30
 
@@ -152,13 +141,6 @@ def plot_old_new_rtt(name_list):
         save_path = ROOT / 'data' / name / 'figure' / f'{name}-rtt_estimate.png'
         plt.savefig(str(save_path))
         plt.clf()
-    # print(old_rtt_list[0].exists())
-
-    # for p in p_l:
-    #     save_dir = p
-    #     name = p.name
-    #     duration = 30
-    #     plot_one(name=name, duration=duration, flow_index=0, para='rtt', save_dir=save_dir)
 
 def __plot_old_new_rtt(path, plt_index, duration, para):
     data = plot.read_data(file_name = str(path), duration = duration)
@@ -166,35 +148,38 @@ def __plot_old_new_rtt(path, plt_index, duration, para):
     plot.plot_metric(data, duration, para, None, 1, True)
     plt.title(path.stem[len(path.parent.stem)+6:])
 
-                
+def spot_list(target_list, OK_word, NG_list):
+    category = '0_range10'
+    NG = ['range100', 'UDP', '00']
+    flag = True
+    name_list = []
+    for name in target_list:
+        if OK_word in name:
+            for word in NG_list:
+                if word in name:
+                    flag = False
+            if flag:
+                name_list.append(name)
+            flag = True 
+    return name_list   
 
 if __name__ == '__main__':
     base_path = ROOT / 'data'
     path_list = [Path(p).name for p in glob.glob(str(base_path / '*'))]
     path_list.sort()
-    # pprint.pprint(path_list)
 
     category = '0_range10'
-    NG = ['range100', 'UDP', '00']
-    flag = True
-    name_list = []
-    for name in path_list:
-        if category in name:
-            for word in NG:
-                if word in name:
-                    flag = False
-            if flag:
-                name_list.append(name)
-            flag = True
+    NG_list = ['range100', 'UDP', '00']
+    name_list = spot_list(path_list, category, NG_list)
 
     pprint.pprint(name_list)
 
-    for name in name_list:
-        print(name)
-        main(base_path/name)
+    # for name in name_list:
+    #     print(name)
+    #     main(base_path/name)
 
 
-    plot_old_new_rtt(name_list)
+    # plot_old_new_rtt(name_list)
 
 
 
