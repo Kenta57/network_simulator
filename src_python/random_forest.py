@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import plot
 from astropy.timeseries import LombScargle
 import pprint
+from utils import spot_list
 
 from sklearn.model_selection import train_test_split#データ分割用
 from sklearn.ensemble import RandomForestClassifier#ランダムフォレスト
@@ -20,6 +21,8 @@ ROOT = Path.cwd().parent
 def pre_process(save_path, category, peak_num,index):
     base_path = ROOT / 'data'
     name_list = [Path(p).name for p in glob.glob(str(base_path/f'*{category}*'))]
+    NG_list = ['UDP', '00']
+    name_list = spot_list(name_list, category, NG_list)
     # Link_Errorの削除
     # name_list = [name for name in name_list if (('Link' not in name) or ('001' in name))]
     # delete_category = '00'
@@ -35,8 +38,11 @@ def pre_process(save_path, category, peak_num,index):
     # X_train, X_test, _, _ = train_test_split(name_list,label, stratify = label, test_size=0.3, random_state=1234)
     X_train, X_test, _, _ = train_test_split(name_list,label, stratify = label, test_size=0.3)
     
-    train_path_list = [base_path/name/f'{name}-flw{i}-rtt.data' for name in X_train for i in range(3)]
-    test_path_list = [base_path/name/f'{name}-flw{i}-rtt.data' for name in X_test for i in range(3)]
+    # train_path_list = [base_path/name/f'{name}-flw{i}-rtt.data' for name in X_train for i in range(3)]
+    # test_path_list = [base_path/name/f'{name}-flw{i}-rtt.data' for name in X_test for i in range(3)]
+    train_path_list = [base_path/name/f'{name}-flw{i}-rtt_estimate.data' for name in X_train for i in range(3)]
+    test_path_list = [base_path/name/f'{name}-flw{i}-rtt_estimate.data' for name in X_test for i in range(3)]
+
 
     # train用のデータ生成
     X_train, y_train, _ = make_X_y(train_path_list, peak_num)
@@ -150,16 +156,16 @@ def byte_in_flight(path):
     return data['value'].max()
 
 def ave_score(n=10):
-    save_dir = ROOT / 'evaluation'
+    save_dir = ROOT / 'evaluation_middle'
     save_dir.mkdir(exist_ok=True)
 
-    category = 'range100'
-    n_label = 3
+    category = 'range50'
+    n_label = 3 # クラス分類の個数
     dir_name = f'peak_label_{n_label}_{category}'
     save_dir = save_dir / dir_name
     save_dir.mkdir(exist_ok=True)
 
-    for peak_num in range(1,6):
+    for peak_num in range(1,4):
         prefix_name = f'peak_{peak_num}_label_{n_label}_{category}'
         save_path = save_dir / prefix_name
         save_path.mkdir(exist_ok=True)
@@ -169,10 +175,9 @@ def ave_score(n=10):
         f = open(str(save_path/f'{file_name}.txt'),mode='w')
 
         score = []
-        for i in range(n):
-            score.append(pre_process(save_path,category,peak_num,i))
         sum = 0
         for i in range(n):
+            score.append(pre_process(save_path,category,peak_num,i))
             sum += score[i]
             print(f'accuracy{i} : {score[i]}')
             f.write(f'accuracy{i} : {score[i]}\n')
@@ -260,16 +265,15 @@ def show_confusion_matrix(target_path):
 
 
 if __name__ == '__main__':
-    # ave_score()
+    ave_score()
     # pre_process()
 
-    base_path = ROOT / 'evaluation'
-    # name_list = [Path(p).name for p in glob.glob(str(base_path/'*')) if 'peak_label_3_range100' in p]
-    name_list = ['peak_label_3_range10_0001', 'peak_label_3_range50', 'peak_label_3_range100']
-    # name_list = ['peak_label_3_range10_001', 'peak_label_3_range10_0001', 'peak_label_3_range10_0005', 'peak_label_3_range10_00025']
-    name_list.sort()
+    # base_path = ROOT / 'evaluation'
+    # name_list = ['peak_label_3_range10_0001', 'peak_label_3_range50', 'peak_label_3_range100']
+    # name_list.sort()
     # print(name_list)
-    plot_acuuracy_stack(name_list)
+    # plot_acuuracy_stack(name_list)
+
     # name_list.sort()
     # print(name_list)
     # for name in name_list:
@@ -277,3 +281,11 @@ if __name__ == '__main__':
 
     # target_path = ROOT / 'evaluation/peak_label_3_range100/peak_3_label_3_range100'
     # show_confusion_matrix(target_path).to_csv('test.csv')
+
+    # category = 'range50'
+    # base_path = ROOT / 'data'
+    # name_list = [Path(p).name for p in glob.glob(str(base_path/f'*{category}*'))]
+    # NG_list = ['UDP', '00']
+    # name_list = spot_list(name_list, category, NG_list)
+    # name_list.sort()
+    # pprint.pprint(name_list)

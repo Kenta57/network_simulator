@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import plot
 from astropy.timeseries import LombScargle
 import pprint
+import utils
 
 pd.set_option('display.max_rows', 150)
 ROOT = Path.cwd().parent
@@ -113,7 +114,7 @@ def Lomb_Scargle(path, save_dir=None):
     plt.subplots_adjust(left=0.15, bottom=0.15)
     plt.plot(frequency, power)
 
-    plt.savefig(str(save_dir / f'Lomb_{path.stem}.png'))
+    plt.savefig(str(save_dir / f'Lomb_{path.stem}_estimate.png'))
     plt.clf()
     return l
 
@@ -132,8 +133,12 @@ def check():
     # save_dir = base_path / 'LS'
     save_dir = base_path / 'LS_data'
     save_dir.mkdir(exist_ok=True)
-    path_list = glob.glob(str(base_path / '*test*'))
-    path_list = [Path(p) for p in path_list]
+    path_list = glob.glob(str(base_path/'*'))
+    name_list = [Path(p).name for p in path_list]
+    category = 'range10'
+    NG_list = ['UDP', '00']
+    name_list = utils.spot_list(name_list, category, NG_list)
+    path_list = [base_path / name for name in name_list]
     path_list.sort()
     print(path_list)
     for p in path_list:

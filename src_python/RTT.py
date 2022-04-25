@@ -6,6 +6,7 @@ import glob
 import pprint
 
 import plot
+import utils
 import matplotlib.pyplot as plt
 
 ROOT = Path.cwd().parent
@@ -39,19 +40,25 @@ class rtt_estimator:
         if self.isACK(packet.tcp):
             self.ack_queue.append(packet)
         elif len(self.ack_queue) != 0:
-            if self.TSval is not None and packet.tcp.options_timestamp_tsecr == self.TSval:
-                pass
-            else:
+            if self.TSval is None:
                 self.TSval = self.ack_queue[0].tcp.options_timestamp_tsval
+                
+            if int(packet.tcp.options_timestamp_tsecr) > int(self.TSval):
+                self.ack_queue.popleft()
+                self.TSval = None
+                return
+
+            if packet.tcp.options_timestamp_tsecr == self.TSval:
                 self.rtt_sampling(self.ack_queue[0], packet)
                 self.rtt_estimate()
                 self.ack_queue.popleft()
+                self.TSval = None
 
     def rtt_sampling(self, packet_TSval, packet_TSecr):
         self.samplingRtt = float(packet_TSecr.sniff_timestamp) - float(packet_TSval.sniff_timestamp)
         self.time = packet_TSecr.sniff_timestamp
         self.stream_sampling.write(f'{self.time} {self.samplingRtt}\n')
-        print(f'time : {self.time}, rtt_s : {self.samplingRtt}')
+        # print(f'time : {self.time}, rtt_s : {self.samplingRtt}')
         return self.samplingRtt
 
     def rtt_estimate(self):
@@ -122,61 +129,47 @@ def plot_rtt(target_path):
     plt.savefig(str(save_path))
     plt.clf()
 
-def plot_old_new_rtt(name_list):
+def plot_old_new_rtt(name):
     base_path = ROOT / 'data'
     para = 'rtt'
     duration = 30
 
-    for name in name_list:
-        plt.figure(figsize=(10*3, 20))
-        plt.suptitle(name, fontsize=50)
-        for flow_index in range(3):
-            p = base_path / name / f'{name}-flw{flow_index}-{para}.data' 
-            __plot_old_new_rtt(p, 1 + flow_index, duration, para)
-            p = base_path / name / f'{name}-flw{flow_index}-{para}_sampling.data' 
-            __plot_old_new_rtt(p, 4 + flow_index, duration, para)
-            p = base_path / name / f'{name}-flw{flow_index}-{para}_estimate.data' 
-            __plot_old_new_rtt(p, 7 + flow_index, duration, para)
+    plt.figure(figsize=(10*3, 20))
+    plt.suptitle(name, fontsize=50)
+    for flow_index in range(3):
+        p = base_path / name / f'{name}-flw{flow_index}-{para}.data' 
+        __plot_old_new_rtt(p, 1 + flow_index, duration, para)
+        p = base_path / name / f'{name}-flw{flow_index}-{para}_sampling.data' 
+        __plot_old_new_rtt(p, 4 + flow_index, duration, para)
+        p = base_path / name / f'{name}-flw{flow_index}-{para}_estimate.data' 
+        __plot_old_new_rtt(p, 7 + flow_index, duration, para)
 
-        save_path = ROOT / 'data' / name / 'figure' / f'{name}-rtt_estimate.png'
-        plt.savefig(str(save_path))
-        plt.clf()
+    save_path = ROOT / 'data' / name / 'figure' / f'{name}-rtt_estimate.png'
+    plt.savefig(str(save_path))
+    plt.clf()
 
 def __plot_old_new_rtt(path, plt_index, duration, para):
     data = plot.read_data(file_name = str(path), duration = duration)
     plt.subplot(3, 3, plt_index)
     plot.plot_metric(data, duration, para, None, 1, True)
     plt.title(path.stem[len(path.parent.stem)+6:])
-
-def spot_list(target_list, OK_word, NG_list):
-    flag = True
-    name_list = []
-    for name in target_list:
-        if OK_word in name:
-            for word in NG_list:
-                if word in name:
-                    flag = False
-            if flag:
-                name_list.append(name)
-            flag = True 
-    return name_list   
-
+    
 if __name__ == '__main__':
     base_path = ROOT / 'data'
     path_list = [Path(p).name for p in glob.glob(str(base_path / '*'))]
     path_list.sort()
 
-    category = 'range50'
+    # targetの絞り込み
+    category = 'range100'
     NG_list = ['UDP']
-    name_list = spot_list(path_list, category, NG_list)
+    name_list = utils.spot_list(path_list, category, NG_list)
 
     pprint.pprint(name_list)
 
     for name in tqdm(name_list):
         print(name)
         main(base_path/name)
-
-    plot_old_new_rtt(name_list)
+        plot_old_new_rtt(name)
 
 
 
