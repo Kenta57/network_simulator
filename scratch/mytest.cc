@@ -490,6 +490,7 @@ int main (int argc, char *argv[])
   for(int i = 0; i < num_flows; i++){
     if(delay_random){
       global_delay = std::to_string(uniformRv->GetInteger (1, upper_delay)) + "ms";
+    }else{
       global_delay = std::to_string(delay_array[i]) + "ms";
     }
     LocalLinks[i] = GetP2PLink (access_bandwidth, global_delay, q_size);

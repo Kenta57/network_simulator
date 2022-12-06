@@ -18,10 +18,9 @@ pd.set_option('display.max_rows', 150)
 # pd.set_option('display.max_columns', 30)
 ROOT = Path.cwd().parent
 
-def pre_process(save_path, category, peak_num,index):
+def pre_process(save_path, category, NG_list, peak_num,index):
     base_path = ROOT / 'data'
     name_list = [Path(p).name for p in glob.glob(str(base_path/f'*{category}*'))]
-    NG_list = ['UDP', '00']
     name_list = spot_list(name_list, category, NG_list)
     # Link_Errorの削除
     # name_list = [name for name in name_list if (('Link' not in name) or ('001' in name))]
@@ -32,7 +31,8 @@ def pre_process(save_path, category, peak_num,index):
 
 
     name_list.sort()
-
+    pprint.pprint(name_list)
+    # return
     label = [name[0] for name in name_list]
 
     # X_train, X_test, _, _ = train_test_split(name_list,label, stratify = label, test_size=0.3, random_state=1234)
@@ -42,6 +42,8 @@ def pre_process(save_path, category, peak_num,index):
     # test_path_list = [base_path/name/f'{name}-flw{i}-rtt.data' for name in X_test for i in range(3)]
     train_path_list = [base_path/name/f'{name}-flw{i}-rtt_estimate.data' for name in X_train for i in range(3)]
     test_path_list = [base_path/name/f'{name}-flw{i}-rtt_estimate.data' for name in X_test for i in range(3)]
+    # train_path_list = [base_path/name/f'{name}-flw{i}-seq_diff.data' for name in X_train for i in range(3)]
+    # test_path_list = [base_path/name/f'{name}-flw{i}-seq_diff.data' for name in X_test for i in range(3)]
 
 
     # train用のデータ生成
@@ -88,8 +90,9 @@ def pre_process(save_path, category, peak_num,index):
 def make_X_y(path_list, peak_num):
     base_path = ROOT / 'data'
     name_list = [p.stem for p in path_list]
-    dup_list = [base_path/name[:-9]/f'{name[:-9]}-DUP_ACK_num.data' for name in name_list]
-    flight_list = [base_path/name[:-9]/f'{name[:-9]}-sack-True-flw{i}-inflight.data' for name in name_list for i in range(3)]
+    delete_char_num = 9 + 9
+    dup_list = [base_path/name[:-delete_char_num]/f'{name[:-delete_char_num]}-DUP_ACK_num.data' for name in name_list]
+    flight_list = [base_path/name[:-delete_char_num]/f'{name[:-delete_char_num]}-sack-True-flw{i}-inflight.data' for name in name_list for i in range(3)]
     data = []
 
     add_feature = [
@@ -159,13 +162,14 @@ def ave_score(n=10):
     save_dir = ROOT / 'evaluation_middle'
     save_dir.mkdir(exist_ok=True)
 
-    category = 'range50'
+    category = 'range10'
+    NG_list = ['UDP', '00']
     n_label = 3 # クラス分類の個数
     dir_name = f'peak_label_{n_label}_{category}'
     save_dir = save_dir / dir_name
     save_dir.mkdir(exist_ok=True)
 
-    for peak_num in range(1,4):
+    for peak_num in range(1,6):
         prefix_name = f'peak_{peak_num}_label_{n_label}_{category}'
         save_path = save_dir / prefix_name
         save_path.mkdir(exist_ok=True)
@@ -177,7 +181,7 @@ def ave_score(n=10):
         score = []
         sum = 0
         for i in range(n):
-            score.append(pre_process(save_path,category,peak_num,i))
+            score.append(pre_process(save_path, category, NG_list, peak_num, i))
             sum += score[i]
             print(f'accuracy{i} : {score[i]}')
             f.write(f'accuracy{i} : {score[i]}\n')
@@ -208,13 +212,13 @@ def plot_acuuracy(name):
     # plt.clf()
 
 def plot_acuuracy_stack(name_list):
-    base_path = ROOT / 'evaluation'
+    base_path = ROOT / 'evaluation_middle'
     scores_list = []
     for name in name_list:
         target_path = base_path / name
         path_list = [Path(p) for p in glob.glob(str(target_path/'*'/'*.txt'))]
         path_list.sort()
-        # print(path_list)
+        pprint.pprint(path_list)
         scores = []
         for p in path_list:
             with open(str(p)) as f:
@@ -228,7 +232,7 @@ def plot_acuuracy_stack(name_list):
     ax.set_ylabel('mean_accuracy')  # y軸ラベル
     # ax.set_title(r'$\sin(x)$ and $\cos(x)$') # グラフタイトル
 
-    label_name = ['range10', 'range50', 'range100']
+    label_name = ['range10', 'range100', 'range50']
     # label_name = ['rate=0.001', 'rate=0.0025', 'rate=0.005', 'rate=0.01']
     for s, name in zip(scores_list, label_name):
         x = list(range(1,len(s)+1))
@@ -259,17 +263,19 @@ def show_confusion_matrix(target_path):
     index_labels = ["act_" + str(l) for l in labels]
     cm = pd.DataFrame(c_matrix,columns=columns_labels, index=index_labels)
 
+    print(target_path.stem)
     print(cm)
     return cm
     
 
 
 if __name__ == '__main__':
-    ave_score()
+    # ave_score()
     # pre_process()
 
-    # base_path = ROOT / 'evaluation'
-    # name_list = ['peak_label_3_range10_0001', 'peak_label_3_range50', 'peak_label_3_range100']
+    # base_path = ROOT / 'evaluation_middle'
+    # # name_list = ['peak_label_3_range10_001', 'peak_label_3_range10', 'peak_label_3_range10_0005', 'peak_label_3_range10_00025']
+    # name_list = ['peak_label_3_range10', 'peak_label_3_range50', 'peak_label_3_range100']
     # name_list.sort()
     # print(name_list)
     # plot_acuuracy_stack(name_list)
@@ -279,8 +285,20 @@ if __name__ == '__main__':
     # for name in name_list:
     #     plot_acuuracy(name)
 
-    # target_path = ROOT / 'evaluation/peak_label_3_range100/peak_3_label_3_range100'
-    # show_confusion_matrix(target_path).to_csv('test.csv')
+    name = 'peak_label_3_range100'
+    # target_path = ROOT / 'evaluation_middle/peak_label_3_range10/peak_3_label_3_range10'
+    target_path = ROOT / f'evaluation_middle/{name}/{name}'
+    base_path = ROOT / 'evaluation_middle'
+    path_list = list(glob.glob(str(base_path/'*'/'*')))
+    path_list.sort()
+    path_list = [ROOT / 'evaluation_middle' / name for name in ['peak_label_3_range10', 'peak_label_3_range50', 'peak_label_3_range100']]
+    p_l = []
+    for p in path_list:
+        p_l += list(glob.glob(str(p/'*')))
+    p_l.sort()
+    pprint.pprint(p_l)
+    for p in p_l:
+        show_confusion_matrix(Path(p)).to_csv('test.csv')
 
     # category = 'range50'
     # base_path = ROOT / 'data'

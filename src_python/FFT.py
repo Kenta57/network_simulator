@@ -7,6 +7,7 @@ from astropy.timeseries import LombScargle
 import glob
 
 import plot
+import utils
 
 ROOT = Path.cwd().parent
 
@@ -190,18 +191,35 @@ def Lomb_Scargle(path):
     rtt = data['value'].to_list()
     frequency, power = LombScargle(t,rtt).autopower(maximum_frequency=5.0)
     plt.plot(frequency, power)
-    path = ROOT / 'result' / 
+    save_path = path.parent / 'figure' / path.stem
+
     plt.savefig(f'{path.stem}.png')
     plt.clf()
 
 def check():
-    base_path = ROOT / 'result'
-    path_list = glob.glob(str(base_path / '*range50*'))
-    path_list = [Path(p) for p in path_list]
-    print(path_list)
-    for p in path_list:
-        name = p.stem
-        target_path = p / f'{name}-flw0-rtt.data'
+    # base_path = ROOT / 'data'
+    # path_list = glob.glob(str(base_path / '*range50*'))
+    # path_list = [Path(p) for p in path_list]
+
+    base_path = ROOT / 'data'
+    path_list = [Path(p).name for p in glob.glob(str(base_path / '*'))]
+    path_list.sort()
+
+    # targetの絞り込み
+    category = 'test'
+    NG_list = []
+    name_list = utils.spot_list(path_list, category, NG_list)
+
+
+    print(name_list)
+    # for p in path_list:
+    #     name = p.stem
+    #     target_path = p / f'{name}-flw0-rtt.data'
+    #     Lomb_Scargle(target_path)
+
+    for name in name_list:
+        # name = p.stem
+        target_path = base_path / name / f'{name}-flw0-rtt.data'
         Lomb_Scargle(target_path)
 
 if __name__ == '__main__':

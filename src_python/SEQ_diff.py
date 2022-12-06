@@ -11,25 +11,19 @@ import matplotlib.pyplot as plt
 
 ROOT = Path.cwd().parent
 
-class rtt_estimator:
+class Extractor_seq_diff:
     def __init__(self, target_dir, flow_idx):
-        self.alpha = 0.125
-        self.estimatedRtt = None
-        self.samplingRtt = None
-        self.ack_queue = deque()
-        self.TSval = None
+        self.seq = 0
+        self.time = 0.0
         self.prefix = target_dir.name
-        save_path_sampling = target_dir / f'{self.prefix}-flw{flow_idx}-rtt_sampling.data'
-        save_path_estimate = target_dir / f'{self.prefix}-flw{flow_idx}-rtt_estimate.data'
-        for p in [save_path_sampling, save_path_estimate]:
-            p.unlink(missing_ok=True)
+        # save_path = target_dir / f'{self.prefix}-flw{flow_idx}-seq_diff.data'
+        save_path = target_dir / f'{self.prefix}-flw{flow_idx}-delta_send.data'
+        save_path.unlink(missing_ok=True)
 
-        self.stream_sampling = open(str(save_path_sampling), mode='a')
-        self.stream_estimate = open(str(save_path_estimate), mode='a')
+        self.stream_seq = open(str(save_path), mode='a')
     
     def __del__(self):
-        self.stream_sampling.close()
-        self.stream_estimate.close()
+        self.stream_seq.close()
 
     def isACK(self, segment):
         seq = int(segment.seq)
@@ -37,41 +31,17 @@ class rtt_estimator:
         return seq == 1 and ack != 1
 
     def push(self, packet):
-        if self.isACK(packet.tcp):
-            self.ack_queue.append(packet)
-        elif len(self.ack_queue) != 0:
-            if self.TSval is None:
-                self.TSval = self.ack_queue[0].tcp.options_timestamp_tsval
-                
-            if int(packet.tcp.options_timestamp_tsecr) > int(self.TSval):
-                self.ack_queue.popleft()
-                self.TSval = None
-                return
-
-            if packet.tcp.options_timestamp_tsecr == self.TSval:
-                self.rtt_sampling(self.ack_queue[0], packet)
-                self.rtt_estimate()
-                self.ack_queue.popleft()
-                self.TSval = None
-
-    def rtt_sampling(self, packet_TSval, packet_TSecr):
-        self.samplingRtt = float(packet_TSecr.sniff_timestamp) - float(packet_TSval.sniff_timestamp)
-        self.time = packet_TSecr.sniff_timestamp
-        self.stream_sampling.write(f'{self.time} {self.samplingRtt}\n')
-        # print(f'time : {self.time}, rtt_s : {self.samplingRtt}')
-        return self.samplingRtt
-
-    def rtt_estimate(self):
-        if self.estimatedRtt is None:
-            self.estimatedRtt = self.samplingRtt
-        else:
-            self.estimatedRtt += (self.samplingRtt - self.estimatedRtt) * self.alpha
-        print(f'time : {self.time}, rtt_e : {self.estimatedRtt}')
-        self.stream_estimate.write(f'{self.time} {self.estimatedRtt}\n')
-        return self.estimatedRtt
+        if not self.isACK(packet.tcp):
+            seq_diff = int(packet.tcp.seq)- self.seq
+            time_diff = float(packet.sniff_timestamp) - self.time
+            print(seq_diff, time_diff, seq_diff/time_diff)
+            # self.stream_seq.write(f'{packet.sniff_timestamp} {seq_diff/time_diff}\n')
+            self.stream_seq.write(f'{packet.sniff_timestamp} {time_diff}\n')
+            self.seq = int(packet.tcp.seq)
+            self.time = float(packet.sniff_timestamp)
 
 def main(target_dir):
-    r_estimators = [rtt_estimator(target_dir, index) for index in range(3)]
+    r_estimators = [Extractor_seq_diff(target_dir, index) for index in range(3)]
     prefix = target_dir.name
     target_path = target_dir / f'{prefix}-1-1.pcap'
     cap = pyshark.FileCapture(str(target_path))
@@ -131,27 +101,27 @@ def plot_rtt(target_path):
 
 def plot_old_new_rtt(name):
     base_path = ROOT / 'data'
-    para = 'rtt'
+    para = 'seq_diff'
     duration = 30
 
     plt.figure(figsize=(10*3, 20))
-    plt.suptitle(name, fontsize=50)
+    # plt.suptitle(name, fontsize=50)
     for flow_index in range(3):
         p = base_path / name / f'{name}-flw{flow_index}-{para}.data' 
         __plot_old_new_rtt(p, 1 + flow_index, duration, para)
-        p = base_path / name / f'{name}-flw{flow_index}-{para}_sampling.data' 
-        __plot_old_new_rtt(p, 4 + flow_index, duration, para)
-        p = base_path / name / f'{name}-flw{flow_index}-{para}_estimate.data' 
-        __plot_old_new_rtt(p, 7 + flow_index, duration, para)
+        # p = base_path / name / f'{name}-flw{flow_index}-{para}_sampling.data' 
+        # __plot_old_new_rtt(p, 4 + flow_index, duration, para)
+        # p = base_path / name / f'{name}-flw{flow_index}-{para}_estimate.data' 
+        # __plot_old_new_rtt(p, 7 + flow_index, duration, para)
 
-    save_path = ROOT / 'data' / name / 'figure' / f'{name}-rtt_estimate.png'
+    save_path = ROOT / 'data' / name / 'figure' / f'{name}-seq_diff.png'
     plt.savefig(str(save_path))
     plt.clf()
 
 def __plot_old_new_rtt(path, plt_index, duration, para):
     data = plot.read_data(file_name = str(path), duration = duration)
     plt.subplot(3, 3, plt_index)
-    plot.plot_metric(data, duration, para, None, 1, True)
+    plot.plot_metric(data, duration, para, 1e7, 1, True)
     plt.title(path.stem[len(path.parent.stem)+6:])
     
 if __name__ == '__main__':
@@ -160,16 +130,22 @@ if __name__ == '__main__':
     path_list.sort()
 
     # targetの絞り込み
-    category = 'test'
+    category = 'range100'
+    NG_list = ['UDP', '00', 'Link', 'TCP']
     NG_list = []
     name_list = utils.spot_list(path_list, category, NG_list)
 
+    name_list = ['Normal_0_range100', 'TCP_Congestion_0_range100', 'Link_Error_0_range100']
+
     pprint.pprint(name_list)
 
-    for name in tqdm(name_list):
+
+    for name in tqdm(name_list[1:]):
         print(name)
         main(base_path/name)
-        # plot_old_new_rtt(name)
+        # # plot_old_new_rtt(name)
+        # break
+
 
 
 

@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from pyrsistent import m
 from sklearn.cluster import KMeans
 from pathlib import Path
 import glob
@@ -74,7 +75,7 @@ def pre_process():
 
 #     return l
 
-def Lomb_Scargle(path, save_dir=None):
+def Lomb_Scargle(path, save_dir=None, para='RTT'):
     data = plot.read_data(str(path), 30)
     t = data['sec'].to_list()
     rtt = data['value'].to_list()
@@ -82,13 +83,15 @@ def Lomb_Scargle(path, save_dir=None):
     # plt.title(str(path.parent.name)[:-10])
     # plt.title(str(path.parent.name)[:-7])
     plt.xlabel('time[s]')
-    plt.ylabel('RTT[s]')
+    plt.ylabel(f'{para}[s]')
     plt.subplots_adjust(left=0.15, bottom=0.15)
     plt.plot(t, rtt)
 
     save_dir = save_dir / path.stem
     save_dir.mkdir(exist_ok=True)
-    plt.savefig(str(save_dir / f'RTT_{path.stem}.png'))
+    print('***************************:')
+    print(str(save_dir / f'{para}_{path.stem}.png'))
+    plt.savefig(str(save_dir / f'{para}_{path.stem}.png'))
     plt.clf()
 
     n = len(t)
@@ -96,6 +99,8 @@ def Lomb_Scargle(path, save_dir=None):
 
     # frequency, power = LombScargle(t[int(n/6):],rtt[int(n/6):]).autopower(maximum_frequency=5.0)
     frequency, power = LombScargle(t,rtt).autopower(maximum_frequency=5.0)
+    pprint.pprint(f'****************************** {len(t)} ********')
+    pprint.pprint(f'****************************** {len(power)} ********')
     l = []
     num = 3
     # peaks,_ = find_peaks(power,prominence=0.1)
@@ -112,9 +117,10 @@ def Lomb_Scargle(path, save_dir=None):
     plt.xlabel('frequency[Hz]')
     plt.ylabel('amplitude[s]')
     plt.subplots_adjust(left=0.15, bottom=0.15)
-    plt.plot(frequency, power)
+    plt.grid(color='b', linestyle=':', linewidth=0.4)
+    plt.plot(frequency[:int(len(frequency)*1.5/5)], power[:int(len(frequency)*1.5/5)])
 
-    plt.savefig(str(save_dir / f'Lomb_{path.stem}_estimate.png'))
+    plt.savefig(str(save_dir / f'Lomb_{path.stem}.png'))
     plt.clf()
     return l
 
@@ -131,23 +137,29 @@ def DUP_ACK(path, stream_idx):
 def check():
     base_path = ROOT / 'data'
     # save_dir = base_path / 'LS'
-    save_dir = base_path / 'LS_data'
+    # save_dir = base_path / 'LS_data'
+    save_dir = base_path / 'presentation'
     save_dir.mkdir(exist_ok=True)
     path_list = glob.glob(str(base_path/'*'))
     name_list = [Path(p).name for p in path_list]
-    category = 'range10'
-    NG_list = ['UDP', '00']
+    category = 'test'
+    # category = 'Normal'
+    # NG_list = ['Link','TCP']
+    NG_list = []
     name_list = utils.spot_list(name_list, category, NG_list)
     path_list = [base_path / name for name in name_list]
     path_list.sort()
-    print(path_list)
+    pprint.pprint(path_list)
+
+    # return 
     for p in path_list:
         name = p.stem
         # target_path = p / f'{name}-flw0-rtt.data'
-        target_path_list = [p / f'{name}-flw{i}-rtt.data' for i in range(3)]
+        para = 'RTT'
+        target_path_list = [p / f'{name}-flw{i}-rtt_estimate.data' for i in range(3)]
+        # target_path_list = [p / f'{name}-flw{i}-{para}.data' for i in range(3)]
         for target_path in target_path_list:
             Lomb_Scargle(target_path, save_dir)
-        # break
 
 
 
