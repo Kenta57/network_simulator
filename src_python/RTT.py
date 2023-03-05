@@ -12,15 +12,19 @@ import matplotlib.pyplot as plt
 ROOT = Path.cwd().parent
 
 class rtt_estimator:
-    def __init__(self, target_dir, flow_idx):
+    def __init__(self, target_path, flow_idx):
         self.alpha = 0.125
         self.estimatedRtt = None
         self.samplingRtt = None
         self.ack_queue = deque()
         self.TSval = None
-        self.prefix = target_dir.name
-        save_path_sampling = target_dir / f'{self.prefix}-flw{flow_idx}-rtt_sampling.data'
-        save_path_estimate = target_dir / f'{self.prefix}-flw{flow_idx}-rtt_estimate.data'
+        self.prefix = target_path.stem
+
+        target_dir = target_path.parent / target_path.stem
+        target_dir.mkdir(exist_ok=True)
+
+        save_path_sampling = target_dir / f'flw{flow_idx}-rtt_sampling.data'
+        save_path_estimate = target_dir / f'flw{flow_idx}-rtt_estimate.data'
         for p in [save_path_sampling, save_path_estimate]:
             p.unlink(missing_ok=True)
 
@@ -70,21 +74,20 @@ class rtt_estimator:
         self.stream_estimate.write(f'{self.time} {self.estimatedRtt}\n')
         return self.estimatedRtt
 
-def main(target_dir):
-    r_estimators = [rtt_estimator(target_dir, index) for index in range(3)]
-    prefix = target_dir.name
-    target_path = target_dir / f'{prefix}-1-1.pcap'
+def main(target_path):
+    r_estimators = {}
     cap = pyshark.FileCapture(str(target_path))
     
     for index, packet in enumerate(cap):
         transport_layer = packet.transport_layer
         if transport_layer == 'TCP':
             stream_idx = int(packet.tcp.stream)
-            if stream_idx > 2:
-                    continue
+            if stream_idx not in r_estimators:
+                r_estimators[stream_idx] = rtt_estimator(target_path, stream_idx)
+            print(index)
             r_estimators[stream_idx].push(packet)
     
-    for r_e in r_estimators:
+    for r_e in r_estimators.values():
         del r_e
 
 def plot_rtt(target_path):
@@ -155,21 +158,9 @@ def __plot_old_new_rtt(path, plt_index, duration, para):
     plt.title(path.stem[len(path.parent.stem)+6:])
     
 if __name__ == '__main__':
-    base_path = ROOT / 'data'
-    path_list = [Path(p).name for p in glob.glob(str(base_path / '*'))]
-    path_list.sort()
+    target_path = ROOT / 'pcap_data' / 'tcp_only_2023-03-03_11_43_51.pcap'
+    main(target_path)
 
-    # targetの絞り込み
-    category = 'test'
-    NG_list = []
-    name_list = utils.spot_list(path_list, category, NG_list)
-
-    pprint.pprint(name_list)
-
-    for name in tqdm(name_list):
-        print(name)
-        main(base_path/name)
-        # plot_old_new_rtt(name)
 
 
 
