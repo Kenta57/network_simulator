@@ -42,11 +42,17 @@ class rtt_estimator:
 
     def push(self, packet):
         if self.isACK(packet.tcp):
+            try:
+                tsval = packet.tcp.options_timestamp_tsval
+                print(tsval)
+            except AttributeError:
+                return 
             self.ack_queue.append(packet)
         elif len(self.ack_queue) != 0:
             if self.TSval is None:
                 self.TSval = self.ack_queue[0].tcp.options_timestamp_tsval
                 
+            print(f'tsecr: {int(packet.tcp.options_timestamp_tsecr)}, tsval: {int(self.TSval)}')
             if int(packet.tcp.options_timestamp_tsecr) > int(self.TSval):
                 self.ack_queue.popleft()
                 self.TSval = None
@@ -82,9 +88,13 @@ def main(target_path):
         transport_layer = packet.transport_layer
         if transport_layer == 'TCP':
             stream_idx = int(packet.tcp.stream)
+            # if str(stream_idx) != '54':
+            #     continue
+            # if str(stream_idx) in ['4', '15', '16', '40', '41', '42', '45', '46', '47', '50', '51', '59', '94']:
+            #     continue
             if stream_idx not in r_estimators:
                 r_estimators[stream_idx] = rtt_estimator(target_path, stream_idx)
-            print(index)
+            # print(index, stream_idx)
             r_estimators[stream_idx].push(packet)
     
     for r_e in r_estimators.values():
@@ -158,7 +168,9 @@ def __plot_old_new_rtt(path, plt_index, duration, para):
     plt.title(path.stem[len(path.parent.stem)+6:])
     
 if __name__ == '__main__':
-    target_path = ROOT / 'pcap_data' / 'tcp_only_2023-03-03_11_43_51.pcap'
+    # target_path = ROOT / 'pcap_data' / 'tcp_only_2023-03-03_11_43_51.pcap'
+    # target_path = ROOT / 'pcap_data' / 'filter_test.pcap'
+    target_path = ROOT / 'pcap_data' / 'stream54.pcap'
     main(target_path)
 
 
